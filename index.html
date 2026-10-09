@@ -28,6 +28,10 @@
       </div>
       <p class="lead">Drivers with spare shower credits share a code with drivers who don't have them, right at the truck stop.</p>
       <p class="sub">Your credits, any truck stop. Free, no money changes hands.</p>
+      <div class="download">
+        <a class="button" href="https://github.com/dmytro-s88/showerdrop-site/releases/latest/download/ShowerDrop.apk">Download for Android</a>
+        <span id="release">Beta · latest version</span>
+      </div>
     </section>
 
     <ol class="steps">
@@ -36,12 +40,37 @@
       <li><b>Shower, then confirm</b><span>Tell the app the door opened. The donor gets thanks, and next time it might be you who shares.</span></li>
     </ol>
 
-    <p class="note">ShowerDrop is in a closed beta for Android. Questions or want to join: <a href="mailto:support@showerdrop.app">support@showerdrop.app</a></p>
+    <section class="install">
+      <h2>Installing the beta</h2>
+      <ol>
+        <li>Tap <b>Download for Android</b> on your phone and open the file when it finishes.</li>
+        <li>If Android asks, allow your browser to install apps (once).</li>
+        <li>If Google Play Protect warns that the app is unknown, tap <b>More details → Install anyway</b>. The beta isn't in the Play Store yet.</li>
+        <li>New versions install over the old one; your account stays.</li>
+      </ol>
+    </section>
+
+    <p class="note">ShowerDrop is in beta for Android. Questions: <a href="mailto:support@showerdrop.app">support@showerdrop.app</a></p>
   </main>
 
   <footer>
     <p><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms of Use</a> · <a href="mailto:support@showerdrop.app">support@showerdrop.app</a></p>
     <p>ShowerDrop is not affiliated with Pilot Flying J, Love's, TravelCenters of America or any loyalty program. Truck stop data © OpenStreetMap contributors.</p>
   </footer>
+
+  <script>
+    // Show which version the button downloads (the newest GitHub release). Without it the button still works.
+    fetch('https://api.github.com/repos/dmytro-s88/showerdrop-site/releases/latest')
+      .then((r) => r.ok ? r.json() : null)
+      .then((rel) => {
+        const apk = rel && rel.assets.find((a) => a.name === 'ShowerDrop.apk');
+        if (!apk) return;
+        const version = rel.tag_name.replace(/^v/, '');
+        const mb = Math.round(apk.size / 1048576);
+        const date = new Date(rel.published_at).toLocaleDateString([], { month: 'short', day: 'numeric' });
+        document.getElementById('release').textContent = `Version ${version} · ${mb} MB · ${date}`;
+      })
+      .catch(() => {});
+  </script>
 </body>
 </html>
