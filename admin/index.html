@@ -85,7 +85,7 @@
     <!-- Sign in: an email code, only for existing accounts. -->
     <div class="login" id="login" hidden>
       <h1>Admin</h1>
-      <p>Sign in with the email of an admin account. We'll send a 6-digit code.</p>
+      <p>Sign in with an admin email. We'll send a 6-digit code.</p>
       <form id="emailForm">
         <input id="email" type="email" autocomplete="email" placeholder="you@example.com" required>
         <button class="primary" id="sendBtn">Send code</button>
@@ -194,6 +194,11 @@
       show('who', !!session);
       if (!session) return show('login', true);
       $('whoEmail').textContent = session.user.email ?? '';
+      // A session kept in this browser may belong to an account that no longer exists (deleted, or the
+      // database was reset): ask the server, and start over with sign-in if it's gone.
+      const { error: userErr } = await sb.auth.getUser();
+      if (seq !== routeSeq) return;
+      if (userErr) { await sb.auth.signOut(); return; }
       const { data: admin } = await sb.rpc('is_admin');
       if (seq !== routeSeq) return;
       if (!admin) return show('notAdmin', true);
@@ -206,10 +211,12 @@
     $('emailForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       $('sendBtn').disabled = true; $('loginMsg').textContent = '';
-      const { error } = await sb.auth.signInWithOtp({ email: $('email').value.trim(), options: { shouldCreateUser: false } });
+      // Creates the account on first sign-in: admin rights come from the admin list, not from having used
+      // the app. Anyone else who signs in here just sees "Not an admin" (the server checks every call).
+      const { error } = await sb.auth.signInWithOtp({ email: $('email').value.trim(), options: { shouldCreateUser: true } });
       $('sendBtn').disabled = false;
-      if (error) return $('loginMsg').textContent = /signups not allowed|not found/i.test(error.message)
-        ? 'No account with this email.' : error.message;
+      if (error) return $('loginMsg').textContent = /rate limit|security purposes/i.test(error.message)
+        ? 'Too many codes requested. Wait a minute and try again.' : error.message;
       show('codeForm', true); $('code').focus();
       $('loginMsg').textContent = 'Code sent. Check your inbox.';
     });
