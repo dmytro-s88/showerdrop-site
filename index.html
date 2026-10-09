@@ -15,8 +15,8 @@
   <header>
     <a class="home" href="./"><img src="logo.png" alt="">ShowerDrop</a>
     <nav>
-      <a href="privacy.html">Privacy</a>
-      <a href="terms.html">Terms</a>
+      <a href="privacy.html" data-i18n="nav.privacy">Privacy</a>
+      <a href="terms.html" data-i18n="nav.terms">Terms</a>
     </nav>
   </header>
 
@@ -26,49 +26,55 @@
         <h1>Be clean for free</h1>
         <span class="lamp" aria-hidden="true"></span>
       </div>
-      <p class="lead">Drivers with spare shower credits share a code with drivers who don't have them, right at the truck stop.</p>
-      <p class="sub">Your credits, any truck stop. Free, no money changes hands.</p>
+      <p class="lead" data-i18n="lead">Drivers with spare shower credits share a code with drivers who don't have them, right at the truck stop.</p>
+      <p class="sub" data-i18n="sub">Your credits, any truck stop. Free, no money changes hands.</p>
       <div class="download">
-        <a class="button" href="https://github.com/dmytro-s88/showerdrop-site/releases/latest/download/ShowerDrop.apk">Download for Android</a>
-        <span id="release">Beta · latest version</span>
+        <a class="button" href="https://github.com/dmytro-s88/showerdrop-site/releases/latest/download/ShowerDrop.apk" data-i18n="download">Download for Android</a>
+        <span id="release" data-i18n="release.default">Beta · latest version</span>
       </div>
     </section>
 
     <ol class="steps">
-      <li><b>Pull in and request a shower</b><span>The app finds the truck stop you're at and asks drivers there with credits for that chain.</span></li>
-      <li><b>A donor accepts</b><span>They reserve a shower with their own loyalty account and send you the room and code, or a photo of it.</span></li>
-      <li><b>Shower, then confirm</b><span>Tell the app the door opened. The donor gets thanks, and next time it might be you who shares.</span></li>
+      <li><b data-i18n="step1.t">Pull in and request a shower</b><span data-i18n="step1.d">The app finds the truck stop you're at and asks drivers there with credits for that chain.</span></li>
+      <li><b data-i18n="step2.t">A donor accepts</b><span data-i18n="step2.d">They reserve a shower with their own loyalty account and send you the room and code, or a photo of it.</span></li>
+      <li><b data-i18n="step3.t">Shower, then confirm</b><span data-i18n="step3.d">Tell the app the door opened. The donor gets thanks, and next time it might be you who shares.</span></li>
     </ol>
 
     <section class="install">
-      <h2>Installing the beta</h2>
+      <h2 data-i18n="install.h">Installing the beta</h2>
       <ol>
-        <li>Tap <b>Download for Android</b> on your phone and open the file when it finishes.</li>
-        <li>If Android asks, allow your browser to install apps (once).</li>
-        <li>If Google Play Protect warns that the app is unknown, tap <b>More details → Install anyway</b>. The beta isn't in the Play Store yet.</li>
-        <li>New versions install over the old one; your account stays.</li>
+        <li data-i18n-html="install.1">Tap <b>Download for Android</b> on your phone and open the file when it finishes.</li>
+        <li data-i18n-html="install.2">If Android asks, allow your browser to install apps (once).</li>
+        <li data-i18n-html="install.3">If Google Play Protect warns that the app is unknown, tap <b>More details → Install anyway</b>. The beta isn't in the Play Store yet.</li>
+        <li data-i18n-html="install.4">New versions install over the old one; your account stays.</li>
       </ol>
     </section>
 
-    <p class="note">ShowerDrop is in beta for Android. Questions: <a href="mailto:support@showerdrop.app">support@showerdrop.app</a></p>
+    <p class="note" data-i18n-html="note">ShowerDrop is in beta for Android. Questions: <a href="mailto:support@showerdrop.app">support@showerdrop.app</a></p>
   </main>
 
   <footer>
-    <p><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms of Use</a> · <a href="mailto:support@showerdrop.app">support@showerdrop.app</a></p>
-    <p>ShowerDrop is not affiliated with Pilot Flying J, Love's, TravelCenters of America or any loyalty program. Truck stop data © OpenStreetMap contributors.</p>
+    <p><a href="privacy.html" data-i18n="footer.privacy">Privacy Policy</a> · <a href="terms.html" data-i18n="footer.terms">Terms of Use</a> · <a href="mailto:support@showerdrop.app">support@showerdrop.app</a></p>
+    <p data-i18n="footer.disclaimer">ShowerDrop is not affiliated with Pilot Flying J, Love's, TravelCenters of America or any loyalty program. Truck stop data © OpenStreetMap contributors.</p>
   </footer>
 
+  <script src="i18n.js"></script>
   <script>
     // Show which version the button downloads (the newest GitHub release). Without it the button still works.
+    let release = null;
+    const showRelease = () => {
+      if (!release) return;
+      const date = new Date(release.date).toLocaleDateString(siteI18n.lang, { month: 'short', day: 'numeric' });
+      document.getElementById('release').textContent = siteI18n.t('release.fmt', { v: release.version, mb: release.mb, date });
+    };
+    document.addEventListener('langchange', showRelease);
     fetch('https://api.github.com/repos/dmytro-s88/showerdrop-site/releases/latest')
       .then((r) => r.ok ? r.json() : null)
       .then((rel) => {
         const apk = rel && rel.assets.find((a) => a.name === 'ShowerDrop.apk');
         if (!apk) return;
-        const version = rel.tag_name.replace(/^v/, '');
-        const mb = Math.round(apk.size / 1048576);
-        const date = new Date(rel.published_at).toLocaleDateString([], { month: 'short', day: 'numeric' });
-        document.getElementById('release').textContent = `Version ${version} · ${mb} MB · ${date}`;
+        release = { version: rel.tag_name.replace(/^v/, ''), mb: Math.round(apk.size / 1048576), date: rel.published_at };
+        showRelease();
       })
       .catch(() => {});
   </script>

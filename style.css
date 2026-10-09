@@ -34,9 +34,30 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-
 header { display: flex; align-items: center; gap: 12px; padding-top: 22px; padding-bottom: 8px; }
 header img { width: 40px; height: 40px; border-radius: 10px; }
 header a.home { display: flex; align-items: center; gap: 12px; color: var(--text); text-decoration: none; font-weight: 700; font-size: 19px; }
-header nav { margin-left: auto; display: flex; gap: 18px; font-size: 15px; }
+header nav { margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: 15px; }
+/* Phones: the logo and the language globe; Privacy and Terms stay in the footer. */
+@media (max-width: 460px) { header nav > a { display: none; } }
 header nav a { color: var(--dim); text-decoration: none; }
 header nav a:hover, header nav a[aria-current="page"] { color: var(--text); }
+
+/* Language picker: a globe with the current code, a small menu under it. */
+.lang { position: relative; }
+.lang button {
+  display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 14px; font-weight: 500;
+  color: var(--dim); background: transparent; border: 1px solid var(--surface2); border-radius: 18px;
+  padding: 5px 10px; cursor: pointer;
+}
+.lang button:hover, .lang button[aria-expanded="true"] { color: var(--text); border-color: var(--steel-dark); }
+.lang button:focus-visible, .lang li:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lang ul {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 10; margin: 0; padding: 6px; list-style: none;
+  background: var(--surface2); border: 1px solid #34403f; border-radius: 12px; min-width: 150px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+}
+.lang li { padding: 9px 12px; border-radius: 8px; cursor: pointer; color: var(--text); font-size: 15px; }
+.lang li:hover { background: #34403f; }
+.lang li[aria-selected="true"] { color: var(--accent); font-weight: 500; }
+.legal-note { color: var(--amber); font-size: 15px; margin: 0 0 18px; }
 
 /* Home: the plate is the one bold thing, like the stop plate in the app. */
 .hero { padding: 48px 0 8px; }
