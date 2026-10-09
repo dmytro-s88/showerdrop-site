@@ -32,6 +32,9 @@
     .login p { color: var(--dim); margin: 0 0 18px; }
     .login form { display: grid; gap: 12px; }
     .msg { color: var(--amber); min-height: 22px; font-size: 15px; }
+    button.link { border: 0; padding: 4px 0; color: var(--dim); text-decoration: underline; text-underline-offset: 3px; margin: 14px 0 6px; white-space: normal; text-align: left; }
+    button.link:hover { color: var(--text); }
+    #codeFlow p { margin: 8px 0 12px; }
 
     .bar { display: flex; align-items: center; gap: 14px; padding: 18px 0 6px; flex-wrap: wrap; }
     .bar h1 { margin: 0; font-size: 26px; }
@@ -78,23 +81,42 @@
 <body>
   <header>
     <a class="home" href="../"><img src="../logo.png" alt="">ShowerDrop</a>
-    <div class="who" id="who" hidden><span id="whoEmail"></span><button id="signOut">Sign out</button></div>
+    <div class="who" id="who" hidden><span id="whoEmail"></span><button id="changePw">Password</button><button id="signOut">Sign out</button></div>
   </header>
 
   <main>
     <!-- Sign in: an email code, only for existing accounts. -->
     <div class="login" id="login" hidden>
       <h1>Admin</h1>
-      <p>Sign in with an admin email. We'll send a 6-digit code.</p>
-      <form id="emailForm">
-        <input id="email" type="email" autocomplete="email" placeholder="you@example.com" required>
-        <button class="primary" id="sendBtn">Send code</button>
+      <!-- Everyday sign-in: email and password, no emails sent. -->
+      <form id="pwForm">
+        <input id="email" type="email" autocomplete="username" placeholder="you@example.com" required>
+        <input id="password" type="password" autocomplete="current-password" placeholder="Password" required>
+        <button class="primary" id="pwBtn">Sign in</button>
       </form>
-      <form id="codeForm" hidden>
-        <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code" required>
-        <button class="primary" id="verifyBtn">Sign in</button>
-      </form>
+      <button class="link" id="codeLink" type="button">First time, or forgot your password? Get a code by email</button>
+      <!-- Once (or to reset): a 6-digit code, then set a password. -->
+      <div id="codeFlow" hidden>
+        <p>We'll send a 6-digit code to the email above. After signing in you can set a password.</p>
+        <form id="emailForm"><button class="primary" id="sendBtn">Send code</button></form>
+        <form id="codeForm" hidden>
+          <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code" required>
+          <button class="primary" id="verifyBtn">Sign in with code</button>
+        </form>
+      </div>
       <p class="msg" id="loginMsg"></p>
+    </div>
+
+    <div class="login" id="setPw" hidden>
+      <h1>Set a password</h1>
+      <p>Next time sign in with your email and this password, no code needed.</p>
+      <form id="setPwForm">
+        <input id="newPw" type="password" autocomplete="new-password" placeholder="New password (8+ characters)" minlength="8" required>
+        <input id="newPw2" type="password" autocomplete="new-password" placeholder="Repeat the password" minlength="8" required>
+        <button class="primary" id="setPwBtn">Save password</button>
+      </form>
+      <button class="link" id="skipPw" type="button">Not now</button>
+      <p class="msg" id="setPwMsg"></p>
     </div>
 
     <div class="login" id="notAdmin" hidden>
@@ -190,7 +212,7 @@
     async function route(session) {
       const seq = ++routeSeq;  // a newer auth event wins over one still loading
       stopLive();
-      ['login', 'notAdmin', 'dash'].forEach((id) => show(id, false));
+      ['login', 'notAdmin', 'setPw', 'dash'].forEach((id) => show(id, false));
       show('who', !!session);
       if (!session) return show('login', true);
       $('whoEmail').textContent = session.user.email ?? '';
@@ -202,30 +224,72 @@
       const { data: admin } = await sb.rpc('is_admin');
       if (seq !== routeSeq) return;
       if (!admin) return show('notAdmin', true);
+      if (askPassword) return show('setPw', true);
       show('dash', true);
       await loadAll();
       startLive();
     }
 
     // ---- sign in ------------------------------------------------------------
+    // Email + password every day; a one-time code to start (or to reset), after which the page offers
+    // to set a password. Admin rights come only from app_config.admin_emails, checked on every call.
+    let askPassword = false;
+    const email = () => $('email').value.trim();
+    const say = (m) => { $('loginMsg').textContent = m; };
+
+    $('pwForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $('pwBtn').disabled = true; say('');
+      const { error } = await sb.auth.signInWithPassword({ email: email(), password: $('password').value });
+      $('pwBtn').disabled = false;
+      if (error) say(/invalid login|credentials/i.test(error.message)
+        ? 'Wrong email or password. No password yet? Get a code by email below.' : error.message);
+    });
+    $('codeLink').addEventListener('click', () => { show('codeFlow', true); show('codeLink', false); });
     $('emailForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      $('sendBtn').disabled = true; $('loginMsg').textContent = '';
-      // Creates the account on first sign-in: admin rights come from the admin list, not from having used
-      // the app. Anyone else who signs in here just sees "Not an admin" (the server checks every call).
-      const { error } = await sb.auth.signInWithOtp({ email: $('email').value.trim(), options: { shouldCreateUser: true } });
+      if (!$('email').reportValidity()) return;
+      $('sendBtn').disabled = true; say('');
+      // Creates the account on first sign-in; anyone not on the admin list just sees "Not an admin".
+      const { error } = await sb.auth.signInWithOtp({ email: email(), options: { shouldCreateUser: true } });
       $('sendBtn').disabled = false;
-      if (error) return $('loginMsg').textContent = /rate limit|security purposes/i.test(error.message)
-        ? 'Too many codes requested. Wait a minute and try again.' : error.message;
+      if (error) return say(/rate limit|security purposes/i.test(error.message)
+        ? 'Too many codes requested. Wait a minute and try again.' : error.message);
       show('codeForm', true); $('code').focus();
-      $('loginMsg').textContent = 'Code sent. Check your inbox.';
+      say('Code sent. Check your inbox.');
     });
     $('codeForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       $('verifyBtn').disabled = true;
-      const { error } = await sb.auth.verifyOtp({ email: $('email').value.trim(), token: $('code').value.trim(), type: 'email' });
+      askPassword = true;  // signed in by code: offer to set a password next
+      const { error } = await sb.auth.verifyOtp({ email: email(), token: $('code').value.trim(), type: 'email' });
       $('verifyBtn').disabled = false;
-      if (error) $('loginMsg').textContent = 'Wrong or expired code.';
+      if (error) { askPassword = false; say('Wrong or expired code.'); }
+    });
+
+    $('setPwForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pw = $('newPw').value;
+      if (pw.length < 8) return $('setPwMsg').textContent = 'Use at least 8 characters.';
+      if (pw !== $('newPw2').value) return $('setPwMsg').textContent = "The passwords don't match.";
+      $('setPwBtn').disabled = true;
+      const { error } = await sb.auth.updateUser({ password: pw });
+      $('setPwBtn').disabled = false;
+      if (error) return $('setPwMsg').textContent = error.message;
+      $('setPwForm').reset(); $('setPwMsg').textContent = '';
+      askPassword = false;
+      const { data } = await sb.auth.getSession();
+      route(data.session);
+    });
+    $('skipPw').addEventListener('click', async () => {
+      askPassword = false;
+      const { data } = await sb.auth.getSession();
+      route(data.session);
+    });
+    $('changePw').addEventListener('click', async () => {
+      askPassword = true;
+      const { data } = await sb.auth.getSession();
+      route(data.session);
     });
     $('signOut').addEventListener('click', () => sb.auth.signOut());
     $('refresh').addEventListener('click', () => loadAll());
