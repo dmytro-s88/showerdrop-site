@@ -25,7 +25,8 @@ body {
   line-height: 1.6;
 }
 
-main, header, footer { width: 100%; max-width: 680px; margin: 0 auto; padding: 0 20px; }
+/* One frame on every page (home, privacy, terms): the header and footer never move between pages. */
+main, header, footer { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 20px; }
 
 a { color: var(--steel); text-underline-offset: 3px; }
 a:hover { color: #fff; }
@@ -60,7 +61,6 @@ header nav a:hover, header nav a[aria-current="page"] { color: var(--text); }
 .legal-note { color: var(--amber); font-size: 15px; margin: 0 0 18px; }
 
 /* Home: wider than the legal pages, the sign and the phones need room. */
-.home-page main, .home-page header, .home-page footer { max-width: 1040px; }
 
 /* Hero: a truck stop pylon sign is the one bold thing. Marker lamps, the headline on the steel face,
    a price board in amber digits, two posts. The rest of the page stays quiet. */
@@ -125,7 +125,7 @@ header nav a:hover, header nav a[aria-current="page"] { color: var(--text); }
 }
 .button-soon:hover { background: transparent; color: var(--dim); }
 .soon {
-  font-size: 13px; font-weight: 600; color: var(--amber); white-space: nowrap;
+  font-size: 13px; font-weight: 600; color: var(--amber); white-space: nowrap; margin-left: 2px;
   border: 1px solid rgba(232, 176, 74, 0.5); border-radius: 999px; padding: 2px 9px;
 }
 #release { color: var(--dim); font-size: 15px; }
@@ -177,15 +177,29 @@ header nav a:hover, header nav a[aria-current="page"] { color: var(--text); }
 
 /* Legal pages: plain, readable text. */
 .doc { padding-top: 28px; padding-bottom: 24px; }  /* side padding comes from main */
-.doc h1 { font-size: 32px; line-height: 1.15; margin: 8px 0 4px; }
+/* Legal text keeps a readable measure inside the wide frame, left-aligned like the home sections. */
+.doc > * { max-width: 680px; }
+.doc h1 { font-family: "Fira Sans Extra Condensed", "IBM Plex Sans", sans-serif; font-weight: 700; font-size: 40px; line-height: 1.05; margin: 8px 0 6px; }
 .doc .updated { color: var(--dim); font-size: 15px; margin: 0 0 28px; }
-.doc h2 { font-size: 20px; margin: 34px 0 6px; }
+.doc h2 { font-family: "Fira Sans Extra Condensed", "IBM Plex Sans", sans-serif; font-weight: 700; font-size: 26px; line-height: 1.15; margin: 34px 0 6px; }
 .doc p, .doc li { color: #d3d9da; }
 .doc ul { padding-left: 22px; }
 .doc li { margin: 4px 0; }
 
 /* The rule spans the text column only, like the section rules above it. */
-footer { width: calc(100% - 40px); max-width: 640px; padding: 24px 0 40px; color: var(--dim); font-size: 14px; border-top: 1px solid var(--surface2); margin-top: 24px; }
-.home-page footer { max-width: 1000px; margin-top: 0; }
+footer { width: calc(100% - 40px); max-width: 1000px; padding: 24px 0 40px; color: var(--dim); font-size: 14px; border-top: 1px solid var(--surface2); margin-top: 24px; }
+.home-page footer { margin-top: 0; }
 footer p { margin: 4px 0; }
 footer a { color: var(--dim); }
+
+/* Page-to-page transitions (Chrome, Safari 18+; others just navigate): the header stays put, the page
+   underneath fades and rises in. */
+@view-transition { navigation: auto; }
+header { view-transition-name: site-header; }
+::view-transition-old(root) { animation: 140ms ease-out both page-out; }
+::view-transition-new(root) { animation: 280ms cubic-bezier(.2, .7, .2, 1) both page-in; }
+@keyframes page-out { to { opacity: 0; } }
+@keyframes page-in { from { opacity: 0; transform: translateY(12px); } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*), ::view-transition-new(*), ::view-transition-group(*) { animation: none !important; }
+}
