@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>ShowerDrop Admin</title>
+  <link rel="icon" href="../favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    /* Admin: wider column, dense but calm. The site tokens come from ../style.css. */
+    main, header, footer { max-width: 1100px; }
+    header .who { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--dim); }
+    button {
+      font: inherit; font-size: 15px; font-weight: 500; cursor: pointer; border-radius: 10px;
+      border: 1px solid var(--steel-dark); background: transparent; color: var(--text); padding: 9px 14px;
+    }
+    button { white-space: nowrap; }
+    @media (max-width: 560px) { #whoEmail { display: none; } .tile b { font-size: 26px; } }
+    button.primary { background: var(--steel); color: var(--ink); border-color: var(--steel); font-weight: 700; }
+    button:disabled { opacity: .45; cursor: default; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    input {
+      font: inherit; color: var(--text); background: var(--surface2); border: 1px solid #34403f;
+      border-radius: 10px; padding: 11px 14px; width: 100%; max-width: 360px;
+    }
+    .login { max-width: 420px; padding: 56px 0; }
+    .login h1 { margin: 0 0 6px; }
+    .login p { color: var(--dim); margin: 0 0 18px; }
+    .login form { display: grid; gap: 12px; }
+    .msg { color: var(--amber); min-height: 22px; font-size: 15px; }
+
+    .bar { display: flex; align-items: center; gap: 14px; padding: 18px 0 6px; flex-wrap: wrap; }
+    .bar h1 { margin: 0; font-size: 26px; }
+    .live { display: inline-flex; align-items: center; gap: 8px; color: var(--dim); font-size: 14px; }
+    .live i { width: 10px; height: 10px; border-radius: 50%; background: var(--steel-dark); }
+    .live.on i { background: var(--accent); box-shadow: 0 0 0 4px rgba(79, 191, 106, .22); }
+    .bar .spacer { flex: 1; }
+
+    .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin: 14px 0 8px; }
+    .tile { background: var(--surface2); border-radius: 14px; padding: 14px 16px; }
+    .tile b { display: block; font-size: 30px; line-height: 1.1; }
+    .tile span { color: var(--dim); font-size: 14px; }
+    .tile small { display: block; color: var(--dim); font-size: 13px; margin-top: 4px; }
+    .tile.now b { color: var(--accent); }
+    .tile.text b { font-size: 18px; line-height: 1.35; padding: 6px 0 4px; }
+
+    section { margin: 30px 0 10px; }
+    section h2 { font-size: 19px; margin: 0 0 10px; display: flex; gap: 10px; align-items: baseline; }
+    section h2 em { font-style: normal; color: var(--dim); font-weight: 400; font-size: 15px; }
+    .empty { color: var(--dim); background: var(--surface); border-radius: 12px; padding: 14px 16px; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+    .card { background: var(--surface2); border-radius: 14px; padding: 14px 16px; }
+    .card .top { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+    .card .stop { font-weight: 700; }
+    .card .who { margin: 6px 0 2px; }
+    .card .meta { color: var(--dim); font-size: 14px; }
+
+    .pill { font-size: 13px; font-weight: 700; border-radius: 20px; padding: 3px 10px; white-space: nowrap; color: var(--ink); background: var(--steel); }
+    .pill.searching { background: var(--amber); }
+    .pill.code_sent, .pill.success { background: var(--accent); }
+    .pill.retry_needed, .pill.failed { background: #e0524f; color: #fff; }
+    .pill.no_donor, .pill.cancelled { background: #4a5557; color: var(--text); }
+
+    .table { overflow-x: auto; border-radius: 12px; background: var(--surface); }
+    table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--surface2); white-space: nowrap; }
+    th { color: var(--dim); font-weight: 500; font-size: 13px; }
+    td.dim { color: var(--dim); }
+    tr:last-child td { border-bottom: 0; }
+    .flag { color: var(--amber); }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="home" href="../"><img src="../logo.png" alt="">ShowerDrop</a>
+    <div class="who" id="who" hidden><span id="whoEmail"></span><button id="signOut">Sign out</button></div>
+  </header>
+
+  <main>
+    <!-- Sign in: an email code, only for existing accounts. -->
+    <div class="login" id="login" hidden>
+      <h1>Admin</h1>
+      <p>Sign in with the email of an admin account. We'll send a 6-digit code.</p>
+      <form id="emailForm">
+        <input id="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+        <button class="primary" id="sendBtn">Send code</button>
+      </form>
+      <form id="codeForm" hidden>
+        <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code" required>
+        <button class="primary" id="verifyBtn">Sign in</button>
+      </form>
+      <p class="msg" id="loginMsg"></p>
+    </div>
+
+    <div class="login" id="notAdmin" hidden>
+      <h1>Not an admin</h1>
+      <p>This account can't see the dashboard. Sign out and use an admin email.</p>
+    </div>
+
+    <div id="dash" hidden>
+      <div class="bar">
+        <h1>Dashboard</h1>
+        <span class="live" id="live"><i></i><span id="liveText">connecting…</span></span>
+        <span class="spacer"></span>
+        <button id="refresh">Refresh</button>
+      </div>
+
+      <div class="tiles" id="tiles"></div>
+
+      <section>
+        <h2>Open exchanges <em id="openCount"></em></h2>
+        <div id="openList"></div>
+      </section>
+
+      <section>
+        <h2>Donors on shift <em id="shiftCount"></em></h2>
+        <div id="shiftList"></div>
+      </section>
+
+      <section>
+        <h2>Recently closed</h2>
+        <div id="closedList"></div>
+      </section>
+
+      <section>
+        <h2>Newest users</h2>
+        <div id="userList"></div>
+      </section>
+
+      <section>
+        <h2>Reports</h2>
+        <div id="reportList"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer><p>Times in your timezone. Data refreshes live on every exchange or check-in, the rest every 30 s.</p></footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script>
+    // Production project; on localhost a git-ignored config.local.json may point at the local Supabase.
+    const PROD = {
+      url: 'https://oworbuwivpyuseijwtxk.supabase.co',
+      key: 'sb_publishable_cfyGMaNPTNVua6cZCHE3CA_mCM0cGHQ',
+    };
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s ?? '—').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    const show = (id, on) => { $(id).hidden = !on; };
+
+    const ago = (t) => {
+      if (!t) return '—';
+      const m = Math.round((Date.now() - new Date(t)) / 60000);
+      if (m < 1) return 'just now';
+      if (m < 60) return `${m} min ago`;
+      const h = Math.round(m / 60);
+      return h < 48 ? `${h} h ago` : `${Math.round(h / 24)} d ago`;
+    };
+    const until = (t) => {
+      if (!t) return '';
+      const m = Math.round((new Date(t) - Date.now()) / 60000);
+      return m <= 0 ? 'expiring' : `${m} min left`;
+    };
+    const time = (t) => t ? new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+    const label = { searching: 'searching', accepted: 'accepted', queued: 'in line', code_sent: 'code sent',
+      retry_needed: 'retry needed', success: 'success', failed: 'failed', no_donor: 'no donor', cancelled: 'cancelled' };
+    const pill = (s) => `<span class="pill ${esc(s)}">${esc(label[s] ?? s)}</span>`;
+    const table = (head, rows) => rows.length
+      ? `<div class="table"><table><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`
+      : '<div class="empty">Nothing yet.</div>';
+
+    let sb, channel, reloadTimer, slowTimer;
+
+    async function start() {
+      let cfg = PROD;
+      if (location.hostname === 'localhost') {
+        try { cfg = await (await fetch('config.local.json')).json(); } catch { /* use production */ }
+      }
+      sb = supabase.createClient(cfg.url, cfg.key, { auth: { persistSession: true } });
+      // Fires once with the stored session (INITIAL_SESSION) and on every sign-in/out. Supabase calls
+      // made inside this callback deadlock on the auth lock, so routing runs on the next tick.
+      sb.auth.onAuthStateChange((_e, session) => setTimeout(() => route(session), 0));
+    }
+
+    let routeSeq = 0;
+    async function route(session) {
+      const seq = ++routeSeq;  // a newer auth event wins over one still loading
+      stopLive();
+      ['login', 'notAdmin', 'dash'].forEach((id) => show(id, false));
+      show('who', !!session);
+      if (!session) return show('login', true);
+      $('whoEmail').textContent = session.user.email ?? '';
+      const { data: admin } = await sb.rpc('is_admin');
+      if (seq !== routeSeq) return;
+      if (!admin) return show('notAdmin', true);
+      show('dash', true);
+      await loadAll();
+      startLive();
+    }
+
+    // ---- sign in ------------------------------------------------------------
+    $('emailForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $('sendBtn').disabled = true; $('loginMsg').textContent = '';
+      const { error } = await sb.auth.signInWithOtp({ email: $('email').value.trim(), options: { shouldCreateUser: false } });
+      $('sendBtn').disabled = false;
+      if (error) return $('loginMsg').textContent = /signups not allowed|not found/i.test(error.message)
+        ? 'No account with this email.' : error.message;
+      show('codeForm', true); $('code').focus();
+      $('loginMsg').textContent = 'Code sent. Check your inbox.';
+    });
+    $('codeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $('verifyBtn').disabled = true;
+      const { error } = await sb.auth.verifyOtp({ email: $('email').value.trim(), token: $('code').value.trim(), type: 'email' });
+      $('verifyBtn').disabled = false;
+      if (error) $('loginMsg').textContent = 'Wrong or expired code.';
+    });
+    $('signOut').addEventListener('click', () => sb.auth.signOut());
+    $('refresh').addEventListener('click', () => loadAll());
+
+    // ---- data ---------------------------------------------------------------
+    async function loadAll() { await Promise.all([loadOverview(), loadLive(), loadUsers(), loadReports()]); }
+
+    async function loadOverview() {
+      const { data: o, error } = await sb.rpc('admin_overview');
+      if (error) return;
+      const today = o.exchanges_today || {}, week = o.exchanges_week || {};
+      const methods = Object.entries(o.users_by_method || {}).map(([k, v]) => `${v} ${k}`).join(' · ');
+      const tile = (n, label, small, cls = '') => `<div class="tile ${cls}"><b>${esc(n)}</b><span>${label}</span>${small ? `<small>${esc(small)}</small>` : ''}</div>`;
+      $('tiles').innerHTML = [
+        tile(o.open_exchanges, 'open exchanges', '', 'now'),
+        tile(o.donors_on_shift, 'donors on shift', '', 'now'),
+        tile(o.users_total, 'users', `+${o.users_today} today · +${o.users_week} this week`),
+        tile(methods || '—', 'sign-in methods', '', 'text'),
+        tile(today.success ?? 0, 'showers today', `${today.failed ?? 0} failed · ${today.no_donor ?? 0} no donor · ${today.cancelled ?? 0} cancelled`),
+        tile(week.success ?? 0, 'showers this week', `${week.failed ?? 0} failed · ${week.no_donor ?? 0} no donor`),
+        tile(o.reports_open, 'open reports'),
+        tile(o.in_cooldown, 'in cooldown', `${o.flagged} flagged`),
+      ].join('');
+    }
+
+    async function loadLive() {
+      const { data: l, error } = await sb.rpc('admin_live');
+      if (error) return;
+      $('openCount').textContent = l.exchanges.length || '';
+      $('openList').innerHTML = l.exchanges.length ? `<div class="cards">${l.exchanges.map((x) => `
+        <div class="card">
+          <div class="top"><span class="stop">${esc(x.stop)}</span>${pill(x.status)}</div>
+          <div class="who">${esc(x.receiver)} → ${x.donor ? esc(x.donor) : `<span class="flag">${x.donors_pending ? `${x.donors_pending} donor(s) notified` : 'no donor at the stop'}</span>`}</div>
+          <div class="meta">started ${ago(x.created_at)} · ${until(x.expires_at)}${x.queue_number ? ` · #${x.queue_number} in line` : ''}${x.retry_used ? ' · retry used' : ''}${x.has_photo ? ' · photo' : ''}</div>
+        </div>`).join('')}</div>` : '<div class="empty">No open exchanges right now.</div>';
+
+      $('shiftCount').textContent = l.shifts.length || '';
+      $('shiftList').innerHTML = table(['Donor', 'Stop', 'Chain', 'Since', 'Until'],
+        l.shifts.map((s) => `<tr><td>${esc(s.nickname)}</td><td>${esc(s.stop)}</td><td>${esc(s.chain)}</td><td class="dim">${ago(s.checked_in_at)}</td><td class="dim">${until(s.expires_at)}</td></tr>`));
+
+      $('closedList').innerHTML = table(['Status', 'Stop', 'Receiver', 'Donor', 'Closed', 'Reason'],
+        l.recent_exchanges.map((x) => `<tr><td>${pill(x.status)}</td><td>${esc(x.stop)}</td><td>${esc(x.receiver)}</td><td>${esc(x.donor)}</td><td class="dim">${ago(x.updated_at)}</td><td class="dim">${esc(x.decline_reason ?? '')}</td></tr>`));
+    }
+
+    async function loadUsers() {
+      const { data: u, error } = await sb.rpc('admin_users', { p_limit: 50 });
+      if (error) return;
+      $('userList').innerHTML = table(['Nickname', 'Sign-in', 'Email', 'Chains', 'Gave', 'Got', 'Joined', 'Last seen', ''],
+        u.map((x) => `<tr><td>${esc(x.nickname)}</td><td class="dim">${esc(x.method)}</td><td class="dim">${esc(x.email ?? '')}</td><td>${esc(x.chains ?? '')}</td><td>${x.given}</td><td>${x.received}</td><td class="dim">${time(x.created_at)}</td><td class="dim">${ago(x.last_sign_in_at)}</td><td class="flag">${[x.is_blocked && 'blocked', x.in_cooldown && 'cooldown', x.flagged && 'flagged', !x.has_push && 'no push'].filter(Boolean).join(' · ')}</td></tr>`));
+    }
+
+    async function loadReports() {
+      const { data: r, error } = await sb.rpc('admin_reports', { p_limit: 30 });
+      if (error) return;
+      $('reportList').innerHTML = table(['When', 'Reason', 'From', 'Stop', 'Exchange', 'Emailed', 'Photo kept'],
+        r.map((x) => `<tr><td class="dim">${time(x.created_at)}</td><td>${esc(x.reason)}</td><td>${esc(x.reporter)}</td><td>${esc(x.stop)}</td><td>${x.exchange_status ? pill(x.exchange_status) : '—'}</td><td class="dim">${x.notified_at ? time(x.notified_at) : 'not yet'}</td><td>${x.photo_kept ? 'yes' : 'no'}</td></tr>`));
+    }
+
+    // ---- live ---------------------------------------------------------------
+    // Any exchange or check-in change reloads the live view (debounced); counters every 30 s.
+    function startLive() {
+      const nudge = () => { clearTimeout(reloadTimer); reloadTimer = setTimeout(() => { loadLive(); loadOverview(); }, 800); };
+      channel = sb.channel('admin')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'exchanges' }, nudge)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'presence' }, nudge)
+        .subscribe((status) => {
+          $('live').classList.toggle('on', status === 'SUBSCRIBED');
+          $('liveText').textContent = status === 'SUBSCRIBED' ? 'live' : 'reconnecting…';
+        });
+      slowTimer = setInterval(loadAll, 30000);
+    }
+    function stopLive() {
+      clearInterval(slowTimer);
+      if (channel) { sb.removeChannel(channel); channel = null; }
+    }
+
+    start();
+  </script>
+</body>
+</html>
