@@ -8,10 +8,10 @@
   <link rel="icon" href="favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Sans+Extra+Condensed:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="home-page">
   <header>
     <a class="home" href="./"><img src="logo.png" alt="">ShowerDrop</a>
     <nav>
@@ -21,24 +21,57 @@
   </header>
 
   <main>
+    <!-- The hero is a truck stop pylon sign: marker lamps, the headline on the steel face, a price board. -->
     <section class="hero">
-      <div class="plate">
-        <h1>Be clean for free</h1>
-        <span class="lamp" aria-hidden="true"></span>
+      <div class="pylon">
+        <div class="sign">
+          <div class="markers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+          <h1 data-i18n="hero.h">Be clean for free</h1>
+          <div class="board">
+            <span data-i18n="board.item">Shower</span>
+            <b><small>$</small>0.00</b>
+          </div>
+        </div>
+        <div class="posts" aria-hidden="true"></div>
       </div>
-      <p class="lead" data-i18n="lead">Drivers with spare shower credits share a code with drivers who don't have them, right at the truck stop.</p>
-      <p class="sub" data-i18n="sub">Your credits, any truck stop. Free, no money changes hands.</p>
-      <div class="download">
-        <a class="button" href="https://github.com/dmytro-s88/showerdrop-site/releases/latest/download/ShowerDrop.apk" data-i18n="download">Download for Android</a>
-        <span id="release" data-i18n="release.default">Beta · latest version</span>
+
+      <div class="pitch">
+        <p class="lead" data-i18n="lead">Drivers with spare shower credits share a code with drivers who don't have them, right at the truck stop.</p>
+        <p class="sub" data-i18n="sub">Your credits, any truck stop. Free, no money changes hands.</p>
+        <div class="download">
+          <a class="button" href="https://github.com/dmytro-s88/showerdrop-site/releases/latest/download/ShowerDrop.apk" data-i18n="download">Download for Android</a>
+          <span id="release" data-i18n="release.default">Beta · latest version</span>
+        </div>
       </div>
     </section>
 
-    <ol class="steps">
-      <li><b data-i18n="step1.t">Pull in and request a shower</b><span data-i18n="step1.d">The app finds the truck stop you're at and asks drivers there with credits for that chain.</span></li>
-      <li><b data-i18n="step2.t">A donor accepts</b><span data-i18n="step2.d">They reserve a shower with their own loyalty account and send you the room and code, or a photo of it.</span></li>
-      <li><b data-i18n="step3.t">Shower, then confirm</b><span data-i18n="step3.d">Tell the app the door opened. The donor gets thanks, and next time it might be you who shares.</span></li>
-    </ol>
+    <section class="how">
+      <h2 data-i18n="how.h">How it works</h2>
+      <ol class="steps">
+        <li>
+          <figure class="phone"><img src="img/step-1.jpg" width="350" height="758" alt="" data-i18n-alt="shot1.alt"></figure>
+          <div><b data-i18n="step1.t">Pull in and request a shower</b><span data-i18n="step1.d">The app finds the truck stop you're at and asks drivers there with credits for that chain.</span></div>
+        </li>
+        <li>
+          <figure class="phone"><img src="img/step-2.jpg" width="350" height="758" alt="" data-i18n-alt="shot2.alt" loading="lazy"></figure>
+          <div><b data-i18n="step2.t">A donor accepts</b><span data-i18n="step2.d">They reserve a shower with their own loyalty account and send you the room and code, or a photo of it.</span></div>
+        </li>
+        <li>
+          <figure class="phone"><img src="img/step-3.jpg" width="350" height="758" alt="" data-i18n-alt="shot3.alt" loading="lazy"></figure>
+          <div><b data-i18n="step3.t">Shower, then confirm</b><span data-i18n="step3.d">Tell the app the door opened. The donor gets thanks, and next time it might be you who shares.</span></div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="donor">
+      <h2 data-i18n="donor.h">Have credits you won't use?</h2>
+      <p data-i18n-html="donor.d1">When you park, tap <b>I'm ready to share</b>. For the next 30 minutes the app tells you when a driver at your stop needs a shower, and you decide whether to help.</p>
+      <p data-i18n="donor.d2">Every shower you give shows on your counter. When you run out of credits, someone does the same for you.</p>
+      <div class="counters" aria-hidden="true">
+        <span><i class="lamp-green"></i><b>7</b> <em data-i18n="cnt.given">given</em></span>
+        <span><i class="lamp-amber"></i><b>4</b> <em data-i18n="cnt.received">received</em></span>
+      </div>
+    </section>
 
     <section class="install">
       <h2 data-i18n="install.h">Installing the beta</h2>
@@ -48,9 +81,8 @@
         <li data-i18n-html="install.3">If Google Play Protect warns that the app is unknown, tap <b>More details → Install anyway</b>. The beta isn't in the Play Store yet.</li>
         <li data-i18n-html="install.4">New versions install over the old one; your account stays.</li>
       </ol>
+      <p class="note" data-i18n-html="note">ShowerDrop is in beta for Android. Questions: <a href="mailto:support@showerdrop.app">support@showerdrop.app</a></p>
     </section>
-
-    <p class="note" data-i18n-html="note">ShowerDrop is in beta for Android. Questions: <a href="mailto:support@showerdrop.app">support@showerdrop.app</a></p>
   </main>
 
   <footer>

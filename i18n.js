@@ -1,10 +1,21 @@
 // Site language: English, Spanish, Russian, like the app. A globe menu in the header switches it;
 // the choice is remembered, the first visit follows the browser. Elements carry data-i18n="key"
-// (text) or data-i18n-html="key" (text with markup). Legal pages stay in English, as in the app.
+// (text), data-i18n-html="key" (text with markup) or data-i18n-alt="key" (image alt). Legal pages stay in English, as in the app.
 (function () {
   const LANGS = [['en', 'English'], ['es', 'Español'], ['ru', 'Русский']];
   const T = {
     en: {
+      'hero.h': 'Be clean for free',
+      'board.item': 'Shower',
+      'how.h': 'How it works',
+      'shot1.alt': "The app at a Love's truck stop with one donor nearby and a Request a shower button",
+      'shot2.alt': 'A donor named HighwayEagle27 has accepted the request',
+      'shot3.alt': 'Shower room 7 and the code 4321#, with the keypad showing the order to press the keys',
+      'donor.h': "Have credits you won't use?",
+      'donor.d1': "When you park, tap <b>I'm ready to share</b>. For the next 30 minutes the app tells you when a driver at your stop needs a shower, and you decide whether to help.",
+      'donor.d2': 'Every shower you give shows on your counter. When you run out of credits, someone does the same for you.',
+      'cnt.given': 'given',
+      'cnt.received': 'received',
       'nav.privacy': 'Privacy',
       'nav.terms': 'Terms',
       'lang.label': 'Language',
@@ -31,6 +42,17 @@
       'legal.note': '',
     },
     es: {
+      'hero.h': 'Dúchate gratis',
+      'board.item': 'Ducha',
+      'how.h': 'Cómo funciona',
+      'shot1.alt': "La app en una parada Love's con un donante cerca y el botón Pedir ducha",
+      'shot2.alt': 'Un donante llamado HighwayEagle27 aceptó la solicitud',
+      'shot3.alt': 'Ducha número 7 y el código 4321#, con el teclado que muestra el orden de las teclas',
+      'donor.h': '¿Tienes créditos que no vas a usar?',
+      'donor.d1': 'Al estacionar, toca <b>Listo para compartir</b>. Durante 30 minutos la app te avisa si un conductor en tu parada necesita una ducha, y tú decides si ayudas.',
+      'donor.d2': 'Cada ducha que regalas se suma a tu contador. Cuando te quedes sin créditos, alguien hará lo mismo por ti.',
+      'cnt.given': 'dadas',
+      'cnt.received': 'recibidas',
       'nav.privacy': 'Privacidad',
       'nav.terms': 'Términos',
       'lang.label': 'Idioma',
@@ -57,6 +79,17 @@
       'legal.note': 'Este documento solo está disponible en inglés.',
     },
     ru: {
+      'hero.h': 'Мойся бесплатно',
+      'board.item': 'Душ',
+      'how.h': 'Как это работает',
+      'shot1.alt': 'Приложение на стоянке Love\'s: рядом один донор и кнопка «Запросить душ»',
+      'shot2.alt': 'Донор HighwayEagle27 принял запрос',
+      'shot3.alt': 'Душ номер 7 и код 4321#, на клавиатуре показан порядок нажатия',
+      'donor.h': 'Есть лишние кредиты?',
+      'donor.d1': 'Встал на стоянку — нажми <b>Готов делиться</b>. Следующие 30 минут приложение сообщит, если водителю на твоей стоянке нужен душ, а помогать или нет — решаешь ты.',
+      'donor.d2': 'Каждый подаренный душ виден на твоём счётчике. Закончатся кредиты — кто-то сделает то же для тебя.',
+      'cnt.given': 'отдал',
+      'cnt.received': 'получил',
       'nav.privacy': 'Приватность',
       'nav.terms': 'Условия',
       'lang.label': 'Язык',
@@ -100,6 +133,7 @@
     document.documentElement.lang = lang;
     document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
     document.querySelectorAll('[data-i18n-html]').forEach((el) => { el.innerHTML = t(el.dataset.i18nHtml); });
+    document.querySelectorAll('[data-i18n-alt]').forEach((el) => { el.alt = t(el.dataset.i18nAlt); });
     // Legal pages: a one-line note in languages other than English.
     document.querySelectorAll('[data-legal-note]').forEach((el) => {
       el.textContent = t('legal.note');
