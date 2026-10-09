@@ -70,9 +70,11 @@ header nav a:hover, header nav a[aria-current="page"] { color: var(--text); }
 .pylon { position: relative; isolation: isolate; width: 100%; max-width: 420px; }
 /* Light from the sign falling on the lot. */
 .pylon::before {
-  content: ""; position: absolute; inset: -60px -80px -20px; z-index: -1; pointer-events: none;
+  content: ""; position: absolute; inset: -60px -20px -20px; z-index: -1; pointer-events: none;
   background: radial-gradient(closest-side, rgba(232, 176, 74, 0.12), transparent);
 }
+/* On phones the glow stays within the page margin (20px), or the page scrolls sideways. */
+@media (min-width: 820px) { .pylon::before { inset: -60px -80px -20px; } }
 .sign { container-type: inline-size; background: #0b1011; border-radius: 12px; padding: 10px; box-shadow: 0 0 0 1px #2c3638, 0 30px 60px -24px rgba(0, 0, 0, 0.7); }
 .markers { display: flex; justify-content: space-between; padding: 2px 22px 10px; }
 .markers i { width: 11px; height: 11px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 10px 2px rgba(232, 176, 74, 0.5); }
