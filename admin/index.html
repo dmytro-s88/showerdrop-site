@@ -76,6 +76,12 @@
     td.dim { color: var(--dim); }
     tr:last-child td { border-bottom: 0; }
     .flag { color: var(--amber); }
+    .you { color: var(--accent); font-size: 13px; margin-left: 8px; }
+    .addAdmin { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 4px; }
+    .addAdmin input { flex: 1; min-width: 220px; }
+    td button { padding: 5px 10px; font-size: 14px; }
+    #adminLog { color: var(--dim); font-size: 14px; margin-top: 6px; }
+    #adminLog p { margin: 3px 0; }
   </style>
 </head>
 <body>
@@ -157,6 +163,17 @@
       <section>
         <h2>Reports</h2>
         <div id="reportList"></div>
+      </section>
+
+      <section>
+        <h2>Admins</h2>
+        <div id="adminList"></div>
+        <form class="addAdmin" id="addAdminForm">
+          <input id="newAdmin" type="email" placeholder="email@example.com" autocomplete="off" required>
+          <button class="primary" id="addAdminBtn">Add admin</button>
+        </form>
+        <p class="msg" id="adminMsg"></p>
+        <div id="adminLog"></div>
       </section>
     </div>
   </main>
@@ -295,7 +312,7 @@
     $('refresh').addEventListener('click', () => loadAll());
 
     // ---- data ---------------------------------------------------------------
-    async function loadAll() { await Promise.all([loadOverview(), loadLive(), loadUsers(), loadReports()]); }
+    async function loadAll() { await Promise.all([loadOverview(), loadLive(), loadUsers(), loadReports(), loadAdmins()]); }
 
     async function loadOverview() {
       const { data: o, error } = await sb.rpc('admin_overview');
@@ -347,6 +364,49 @@
       $('reportList').innerHTML = table(['When', 'Reason', 'From', 'Stop', 'Exchange', 'Emailed', 'Photo kept'],
         r.map((x) => `<tr><td class="dim">${time(x.created_at)}</td><td>${esc(x.reason)}</td><td>${esc(x.reporter)}</td><td>${esc(x.stop)}</td><td>${x.exchange_status ? pill(x.exchange_status) : '—'}</td><td class="dim">${x.notified_at ? time(x.notified_at) : 'not yet'}</td><td>${x.photo_kept ? 'yes' : 'no'}</td></tr>`));
     }
+
+    // ---- admins -------------------------------------------------------------
+    // The admin list lives on the server (app_config.admin_emails); you can't remove yourself or the last one.
+    const adminErrors = {
+      bad_email: "That doesn't look like an email address.",
+      already_admin: 'This email is already an admin.',
+      cannot_remove_self: "You can't remove yourself. Ask another admin.",
+      last_admin: "You can't remove the last admin.",
+      not_in_list: 'This email is not in the list anymore.',
+    };
+    const adminErr = (e) => adminErrors[e.message] ?? e.message;
+
+    function renderAdmins(a) {
+      $('adminList').innerHTML = table(['Email', 'Account', 'Last sign-in', ''],
+        a.admins.map((x) => `<tr><td>${esc(x.email)}${x.email === a.me ? '<span class="you">you</span>' : ''}</td>
+          <td class="dim">${x.has_account ? 'yes' : 'not yet'}</td>
+          <td class="dim">${x.last_sign_in_at ? ago(x.last_sign_in_at) : '—'}</td>
+          <td>${x.email === a.me ? '' : `<button data-remove="${esc(x.email)}">Remove</button>`}</td></tr>`));
+      $('adminLog').innerHTML = a.log.length
+        ? a.log.map((l) => `<p>${time(l.created_at)} · ${esc(l.actor)} ${l.action === 'add_admin' ? 'added' : 'removed'} ${esc(l.target)}</p>`).join('')
+        : '';
+    }
+    async function loadAdmins() {
+      const { data, error } = await sb.rpc('admin_admins');
+      if (!error) renderAdmins(data);
+    }
+    $('addAdminForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $('addAdminBtn').disabled = true; $('adminMsg').textContent = '';
+      const { data, error } = await sb.rpc('admin_add', { p_email: $('newAdmin').value });
+      $('addAdminBtn').disabled = false;
+      if (error) return $('adminMsg').textContent = adminErr(error);
+      $('newAdmin').value = '';
+      renderAdmins(data);
+    });
+    $('adminList').addEventListener('click', async (e) => {
+      const email = e.target.closest('[data-remove]')?.dataset.remove;
+      if (!email || !confirm(`Remove ${email} from admins? They lose access to this dashboard.`)) return;
+      $('adminMsg').textContent = '';
+      const { data, error } = await sb.rpc('admin_remove', { p_email: email });
+      if (error) return $('adminMsg').textContent = adminErr(error);
+      renderAdmins(data);
+    });
 
     // ---- live ---------------------------------------------------------------
     // Any exchange or check-in change reloads the live view (debounced); counters every 30 s.
