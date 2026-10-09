@@ -73,14 +73,16 @@ header nav a:hover, header nav a[aria-current="page"] { color: var(--text); }
   content: ""; position: absolute; inset: -60px -80px -20px; z-index: -1; pointer-events: none;
   background: radial-gradient(closest-side, rgba(232, 176, 74, 0.12), transparent);
 }
-.sign { background: #0b1011; border-radius: 12px; padding: 10px; box-shadow: 0 0 0 1px #2c3638, 0 30px 60px -24px rgba(0, 0, 0, 0.7); }
+.sign { container-type: inline-size; background: #0b1011; border-radius: 12px; padding: 10px; box-shadow: 0 0 0 1px #2c3638, 0 30px 60px -24px rgba(0, 0, 0, 0.7); }
 .markers { display: flex; justify-content: space-between; padding: 2px 22px 10px; }
 .markers i { width: 11px; height: 11px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 10px 2px rgba(232, 176, 74, 0.5); }
 .sign h1 {
   margin: 0; padding: 18px 20px 14px; border-radius: 6px;
   background: var(--steel); color: var(--ink); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -3px 0 rgba(0, 0, 0, 0.12);
   font-family: "Fira Sans Extra Condensed", "IBM Plex Sans", sans-serif; font-weight: 800; text-transform: uppercase;
-  font-size: clamp(56px, 17vw, 92px); line-height: 0.88; letter-spacing: 0.005em;
+  /* Sized by the sign's width (not the window's), so the longest word, БЕСПЛАТНО, fits. */
+  font-size: min(88px, calc((100cqi - 40px) / 4.8)); line-height: 0.88; letter-spacing: 0.005em;
+  overflow-wrap: anywhere;
 }
 .board {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
