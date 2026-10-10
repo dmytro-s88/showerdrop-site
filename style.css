@@ -140,6 +140,24 @@ header nav a:hover, header nav a[aria-current="page"] { color: var(--text); }
 .how, .donor, .install { padding: 48px 0; border-top: 1px solid var(--surface2); }
 .home-page h2 { font-family: "Fira Sans Extra Condensed", "IBM Plex Sans", sans-serif; font-weight: 700; font-size: 38px; line-height: 1.05; margin: 0 0 28px; }
 
+/* See it in action: two phones side by side, filmed at the same moment. */
+.live { padding: 48px 0; border-top: 1px solid var(--surface2); }
+.live-sub { color: var(--dim); max-width: 60ch; margin: -14px 0 26px; }
+.duo { display: flex; gap: 28px; }
+.duo figure { margin: 0; flex: 0 1 260px; min-width: 0; }
+.duo figcaption { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.duo figcaption b { font-size: 17px; }
+.duo figcaption span { color: var(--dim); font-size: 14px; }
+.live-phone { width: 100%; }
+.live-phone video { display: block; width: 100%; height: auto; aspect-ratio: 420 / 856; border-radius: 17px; background: #050809; }
+@media (max-width: 460px) {
+  .duo { gap: 14px; }
+  .duo figure { flex: 1 1 0; }
+  /* Both captions on two lines (role, then phone), so the two phones start at the same height. */
+  .duo figcaption { flex-direction: column; gap: 0; }
+  .duo figcaption b { font-size: 15px; }
+}
+
 /* How it works: real app screens in phone frames; numbered because it is a sequence. */
 .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 32px; counter-reset: step; }
 .steps li { display: grid; grid-template-columns: 124px minmax(0, 1fr); gap: 18px; align-items: start; counter-increment: step; }
