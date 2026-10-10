@@ -213,7 +213,8 @@ footer a { color: var(--dim); }
 /* Page-to-page transitions (Chrome, Safari 18+; others just navigate): the header stays put, the page
    underneath fades and rises in. */
 @view-transition { navigation: auto; }
-header { view-transition-name: site-header; }
+/* view-transition-name makes the header its own stacking layer: keep it (and the language menu) above the page. */
+header { view-transition-name: site-header; position: relative; z-index: 20; }
 ::view-transition-old(root) { animation: 140ms ease-out both page-out; }
 ::view-transition-new(root) { animation: 280ms cubic-bezier(.2, .7, .2, 1) both page-in; }
 @keyframes page-out { to { opacity: 0; } }
