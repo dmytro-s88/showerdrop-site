@@ -266,6 +266,9 @@
             <button class="primary" id="addDomainBtn">Block domain</button>
           </form>
           <p class="msg" id="domainMsg"></p>
+          <h3 style="font-size:16px;margin:18px 0 8px">Refused sign-ins <em id="refusalCount" style="font-style:normal;color:var(--dim);font-weight:400;font-size:14px"></em></h3>
+          <div id="refusalTop" class="log"></div>
+          <div id="refusalList"></div>
         </section>
         <section>
           <h2>Your account</h2>
@@ -680,10 +683,19 @@
         : '';
     }
     async function loadSettings() {
-      const [{ data: a }, { data: log }, { data: d }] = await Promise.all([
-        sb.rpc('admin_admins'), sb.rpc('admin_log_recent', { p_limit: 50 }), sb.rpc('admin_blocked_domains')]);
+      const [{ data: a }, { data: log }, { data: d }, { data: ref }] = await Promise.all([
+        sb.rpc('admin_admins'), sb.rpc('admin_log_recent', { p_limit: 50 }), sb.rpc('admin_blocked_domains'),
+        sb.rpc('admin_email_refusals', { p_limit: 50 })]);
       if (a) renderAdmins(a);
       if (d) renderDomains(d);
+      if (ref) {
+        $('refusalCount').textContent = `${ref.total_30d} in 30 days`;
+        $('refusalTop').innerHTML = ref.top_domains.length
+          ? `<p>Most tried: ${ref.top_domains.map((x) => `${esc(x.domain)} (${x.n})`).join(' · ')}</p>` : '';
+        $('refusalList').innerHTML = ref.recent.length
+          ? table(['When', 'Email', 'Domain'], ref.recent.map((x) => `<tr><td class="dim">${time(x.created_at)}</td><td>${esc(x.email)}</td><td class="dim">${esc(x.domain)}</td></tr>`))
+          : '<div class="empty">No refused sign-ins yet.</div>';
+      }
       $('adminLog').innerHTML = (log ?? []).length
         ? log.map((l) => `<p>${time(l.created_at)} · ${esc(l.actor)} · ${esc(l.action.replaceAll('_', ' '))} ${esc(l.target)}${l.details ? ` — ${esc(l.details)}` : ''}</p>`).join('')
         : '<p>Nothing yet.</p>';
