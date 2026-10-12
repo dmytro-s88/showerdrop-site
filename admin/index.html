@@ -138,17 +138,18 @@
   <main>
     <div class="login" id="login" hidden>
       <h1>Admin</h1>
-      <form id="pwForm">
-        <input id="email" type="email" autocomplete="username" placeholder="you@example.com" required>
-        <input id="password" type="password" autocomplete="current-password" placeholder="Password" required>
-        <button class="primary" id="pwBtn">Sign in</button>
+      <!-- name attributes: password managers (iOS, Chrome) key on them to offer saving and autofill. -->
+      <form id="pwForm" method="post" action="#">
+        <input id="email" name="email" type="email" autocomplete="username" placeholder="you@example.com" required>
+        <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Password" required>
+        <button class="primary" id="pwBtn" type="submit">Sign in</button>
       </form>
       <button class="link" id="codeLink" type="button">First time, or forgot your password? Get a code by email</button>
       <div id="codeFlow" hidden>
         <p>We'll send a 6-digit code to the email above. After signing in you can set a password.</p>
         <form id="emailForm"><button class="primary" id="sendBtn">Send code</button></form>
         <form id="codeForm" hidden>
-          <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code" required>
+          <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code" required>
           <button class="primary" id="verifyBtn">Sign in with code</button>
         </form>
       </div>
@@ -158,9 +159,9 @@
     <div class="login" id="setPw" hidden>
       <h1>Set a password</h1>
       <p>Next time sign in with your email and this password, no code needed.</p>
-      <form id="setPwForm">
-        <input id="newPw" type="password" autocomplete="new-password" placeholder="New password (8+ characters)" minlength="8" required>
-        <input id="newPw2" type="password" autocomplete="new-password" placeholder="Repeat the password" minlength="8" required>
+      <form id="setPwForm" method="post" action="#">
+        <input id="newPw" name="new-password" type="password" autocomplete="new-password" placeholder="New password (8+ characters)" minlength="8" required>
+        <input id="newPw2" name="confirm-password" type="password" autocomplete="new-password" placeholder="Repeat the password" minlength="8" required>
         <button class="primary" id="setPwBtn">Save password</button>
       </form>
       <button class="link" id="skipPw" type="button">Not now</button>
