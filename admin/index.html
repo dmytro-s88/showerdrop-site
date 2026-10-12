@@ -647,7 +647,7 @@
       const { data: r, error } = await sb.rpc('admin_reports', { p_limit: PAGE, p_offset: offset, p_open: f === '' ? null : f === 'open' });
       if (error) return;
       $('reportList').innerHTML = table(['When', 'Reason', 'From', 'Stop', 'Exchange', 'Photo', 'Emailed', ''],
-        r.rows.map((x) => `<tr><td class="dim">${time(x.created_at)}</td><td class="wrap">${esc(x.reason).replace(/(https:\/\/\S+)/g, '<a href="$1" target="_blank" rel="noopener">map</a>')}</td><td>${userLink(x.reporter_id, x.reporter)}</td><td>${esc(x.stop ?? '')}</td><td>${x.exchange_status ? pill(x.exchange_status) : '—'}</td><td>${x.photo_path ? `<img class="thumb" data-photo="${esc(x.photo_path)}" alt="code photo">` : '—'}</td><td class="dim">${x.notified_at ? time(x.notified_at) : 'not yet'}</td>
+        r.rows.map((x) => `<tr><td class="dim">${time(x.created_at)}</td><td class="wrap">${x.stop_status ? `${pill(x.stop_status)} <a href="#stops">Stops</a> · ` : ''}${esc(x.reason).replace(/(https:\/\/\S+)/g, '<a href="$1" target="_blank" rel="noopener">map</a>')}</td><td>${userLink(x.reporter_id, x.reporter)}</td><td>${esc(x.stop ?? '')}</td><td>${x.exchange_status ? pill(x.exchange_status) : '—'}</td><td>${x.photo_path ? `<img class="thumb" data-photo="${esc(x.photo_path)}" alt="code photo">` : '—'}</td><td class="dim">${x.notified_at ? time(x.notified_at) : 'not yet'}</td>
           <td><button class="small" data-resolve="${x.id}" data-to="${x.resolved ? 'false' : 'true'}">${x.resolved ? 'Reopen' : 'Resolve'}</button> <button class="small danger" data-delete="${x.id}">Delete</button></td></tr>`));
       pager('repPager', r.total, offset, loadReports);
       fillSigned($('reportList'), 'code-photos', 'photo');
