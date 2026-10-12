@@ -33,7 +33,7 @@ a:hover { color: #fff; }
 a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 
 header { display: flex; align-items: center; gap: 12px; padding-top: 22px; padding-bottom: 8px; }
-header img { width: 40px; height: 40px; border-radius: 10px; }
+header img { width: 40px; height: 40px; }  /* the PNG has its own rounded corners and transparency */
 header a.home { display: flex; align-items: center; gap: 12px; color: var(--text); text-decoration: none; font-weight: 700; font-size: 19px; }
 header nav { margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: 15px; }
 /* Phones: the logo and the language globe; Privacy and Terms stay in the footer. */
