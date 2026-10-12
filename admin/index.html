@@ -272,6 +272,15 @@
           <div id="refusalList"></div>
         </section>
         <section>
+          <h2>Donations</h2>
+          <p class="log">The "☕ Buy me a coffee" button and the thank-you pop-up appear in the app only while a payment page is set here (a Stripe Payment Link, BuyMeACoffee, Ko-fi…). Empty = off.</p>
+          <form class="addAdmin" id="donateForm">
+            <input id="donateUrl" type="url" placeholder="https://buymeacoffee.com/…" autocomplete="off">
+            <button class="primary" id="donateBtn">Save</button>
+          </form>
+          <p class="msg" id="donateMsg"></p>
+        </section>
+        <section>
           <h2>Your account</h2>
           <button id="changePw">Change password</button>
         </section>
@@ -699,9 +708,11 @@
         : '';
     }
     async function loadSettings() {
-      const [{ data: a }, { data: log }, { data: d }, { data: ref }] = await Promise.all([
+      const [{ data: a }, { data: log }, { data: d }, { data: ref }, { data: donate }] = await Promise.all([
         sb.rpc('admin_admins'), sb.rpc('admin_log_recent', { p_limit: 50 }), sb.rpc('admin_blocked_domains'),
-        sb.rpc('admin_email_refusals', { p_limit: 50 })]);
+        sb.rpc('admin_email_refusals', { p_limit: 50 }), sb.rpc('donate_url')]);
+      $('donateUrl').value = donate ?? '';
+      $('donateMsg').textContent = donate ? 'On: the button is live in the app.' : 'Off: no button in the app.';
       if (a) renderAdmins(a);
       if (d) renderDomains(d);
       if (ref) {
@@ -748,6 +759,13 @@
       const { data, error } = await sb.rpc('admin_block_domain', { p_domain: d, p_block: false });
       if (error) return $('domainMsg').textContent = error.message;
       renderDomains(data);
+    });
+
+    $('donateForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const { data, error } = await sb.rpc('admin_set_donate_url', { p_url: $('donateUrl').value });
+      if (error) return $('donateMsg').textContent = error.message === 'bad_url' ? 'Use a full https:// address.' : error.message;
+      $('donateMsg').textContent = data ? 'Saved. The button is live in the app.' : 'Saved: donations are off.';
     });
 
     // ---- live ---------------------------------------------------------------
