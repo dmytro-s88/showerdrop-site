@@ -258,6 +258,16 @@
           <p class="msg" id="adminMsg"></p>
         </section>
         <section>
+          <h2>Blocked email domains <em id="domainCount"></em></h2>
+          <p class="log">Temporary-mail domains can't sign up. The community list is built in; add your own here.</p>
+          <div id="domainList"></div>
+          <form class="addAdmin" id="addDomainForm">
+            <input id="newDomain" placeholder="example.com" autocomplete="off" required>
+            <button class="primary" id="addDomainBtn">Block domain</button>
+          </form>
+          <p class="msg" id="domainMsg"></p>
+        </section>
+        <section>
           <h2>Your account</h2>
           <button id="changePw">Change password</button>
         </section>
@@ -663,9 +673,17 @@
           <td class="dim">${x.last_sign_in_at ? ago(x.last_sign_in_at) : '—'}</td>
           <td>${x.email === a.me ? '' : `<button class="small" data-remove="${esc(x.email)}">Remove</button>`}</td></tr>`));
     }
+    function renderDomains(d) {
+      $('domainCount').textContent = `${d.total} in the list`;
+      $('domainList').innerHTML = d.manual.length
+        ? table(['Domain', 'Added', ''], d.manual.map((x) => `<tr><td>${esc(x.domain)}</td><td class="dim">${time(x.created_at)}</td><td><button class="small" data-unblock="${esc(x.domain)}">Unblock</button></td></tr>`))
+        : '';
+    }
     async function loadSettings() {
-      const [{ data: a }, { data: log }] = await Promise.all([sb.rpc('admin_admins'), sb.rpc('admin_log_recent', { p_limit: 50 })]);
+      const [{ data: a }, { data: log }, { data: d }] = await Promise.all([
+        sb.rpc('admin_admins'), sb.rpc('admin_log_recent', { p_limit: 50 }), sb.rpc('admin_blocked_domains')]);
       if (a) renderAdmins(a);
+      if (d) renderDomains(d);
       $('adminLog').innerHTML = (log ?? []).length
         ? log.map((l) => `<p>${time(l.created_at)} · ${esc(l.actor)} · ${esc(l.action.replaceAll('_', ' '))} ${esc(l.target)}${l.details ? ` — ${esc(l.details)}` : ''}</p>`).join('')
         : '<p>Nothing yet.</p>';
@@ -686,6 +704,22 @@
       const { data, error } = await sb.rpc('admin_remove', { p_email: email });
       if (error) return $('adminMsg').textContent = adminErr(error);
       renderAdmins(data); loadSettings();
+    });
+
+    $('addDomainForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $('domainMsg').textContent = '';
+      const { data, error } = await sb.rpc('admin_block_domain', { p_domain: $('newDomain').value, p_block: true });
+      if (error) return $('domainMsg').textContent = error.message === 'bad_domain' ? "That doesn't look like a domain." : error.message;
+      $('newDomain').value = '';
+      renderDomains(data);
+    });
+    $('domainList').addEventListener('click', async (e) => {
+      const d = e.target.closest('[data-unblock]')?.dataset.unblock;
+      if (!d) return;
+      const { data, error } = await sb.rpc('admin_block_domain', { p_domain: d, p_block: false });
+      if (error) return $('domainMsg').textContent = error.message;
+      renderDomains(data);
     });
 
     // ---- live ---------------------------------------------------------------
