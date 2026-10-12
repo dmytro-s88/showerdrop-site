@@ -127,6 +127,32 @@
     #map { height: 460px; border-radius: 12px; background: var(--surface2); position: relative; z-index: 0; }  /* keeps Leaflet under the drawer */
     .mapTools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
     .mapTools .hint { color: var(--dim); font-size: 14px; flex-basis: 100%; }
+
+    /* Phones: one scrollable row of tabs, full-width search, tighter tables with the secondary
+       columns hidden (the table still scrolls sideways for the rest), a shorter map. */
+    @media (max-width: 700px) {
+      nav.tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin: 10px -16px 4px; padding: 0 16px; }
+      nav.tabs::-webkit-scrollbar { display: none; }
+      nav.tabs a { padding: 10px 12px; white-space: nowrap; }
+      .bar { padding-top: 10px; }
+      .bar h1 { font-size: 22px; }
+      .bar input, .bar select { max-width: none; width: 100%; flex-basis: 100%; }
+      th, td { padding: 8px 10px; font-size: 14px; }
+      /* users: sign-in, chains, joined · exchanges: chain, updated · reports: emailed · stops: decided */
+      #userList th:nth-child(3), #userList td:nth-child(3), #userList th:nth-child(5), #userList td:nth-child(5),
+      #userList th:nth-child(8), #userList td:nth-child(8),
+      #exList th:nth-child(3), #exList td:nth-child(3), #exList th:nth-child(7), #exList td:nth-child(7),
+      #reportList th:nth-child(7), #reportList td:nth-child(7),
+      #stopList th:nth-child(5), #stopList td:nth-child(5) { display: none; }
+      .tiles { grid-template-columns: repeat(2, 1fr); }
+      .tile b { font-size: 24px; }
+      .drawer { padding: 18px 16px 40px; }
+      .kv { grid-template-columns: 1fr; gap: 2px 0; }
+      .kv div:nth-child(odd) { margin-top: 8px; font-size: 13px; }
+      .adjust { grid-template-columns: 1fr; }
+      #map { height: 320px; }
+      .addAdmin input { min-width: 0; }
+    }
   </style>
 </head>
 <body>
