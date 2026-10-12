@@ -333,16 +333,27 @@
     };
     // A user's name, clickable: opens the detail drawer. Mini avatar in front when we know it.
     const userLink = (id, name) => id ? `<a class="user" data-user="${esc(id)}">${esc(name)}</a>` : esc(name);
+    // Private buckets: photos load through signed URLs (an hour), cached so a re-render shows the same
+    // picture at once instead of a blank that reloads.
+    const signedCache = new Map();
+    const cachedUrl = (path) => { const c = signedCache.get(path); return c && c.until > Date.now() ? c.url : null; };
+    async function signedUrl(bucket, path) {
+      const hit = cachedUrl(path);
+      if (hit) return hit;
+      const { data } = await sb.storage.from(bucket).createSignedUrl(path, 3600);
+      if (data?.signedUrl) signedCache.set(path, { url: data.signedUrl, until: Date.now() + 50 * 60 * 1000 });
+      return data?.signedUrl ?? null;
+    }
     const avatarImg = (u, cls = 'ava') => u.avatar_path
-      ? `<img class="${cls}" data-avatar="${esc(u.avatar_path)}" alt="">`
+      ? `<img class="${cls}" src="${esc(cachedUrl(u.avatar_path) ?? '')}" data-avatar="${esc(u.avatar_path)}" alt="">`
       : `<img class="${cls}" src="avatars/${PRESETS[((u.avatar_id ?? 0) % PRESETS.length + PRESETS.length) % PRESETS.length]}.jpg" alt="">`;
-    // Private buckets: photos load through short-lived signed URLs, filled in after render.
     async function fillSigned(root, bucket, attr) {
-      for (const img of root.querySelectorAll(`img[data-${attr}]`)) {
-        const path = img.dataset[attr];
-        const { data } = await sb.storage.from(bucket).createSignedUrl(path, 3600);
-        if (data?.signedUrl) { img.src = data.signedUrl; if (attr === 'photo') img.dataset.full = data.signedUrl; }
-      }
+      await Promise.all([...root.querySelectorAll(`img[data-${attr}]`)].map(async (img) => {
+        const url = await signedUrl(bucket, img.dataset[attr]);
+        if (!url) return;
+        if (img.getAttribute('src') !== url) img.src = url;
+        if (attr === 'photo') img.dataset.full = url;
+      }));
     }
 
     let sb, channel, reloadTimer, slowTimer;
@@ -358,8 +369,11 @@
       sb.auth.onAuthStateChange((_e, session) => setTimeout(() => route(session), 0));
     }
 
-    let routeSeq = 0;
+    let routeSeq = 0, routedUid = null;
     async function route(session) {
+      // The same signed-in user again (token refresh, tab focus): nothing to redo.
+      if (session && session.user.id === routedUid && !askPassword && !$('dash').hidden) return;
+      routedUid = null;
       const seq = ++routeSeq;  // a newer auth event wins over one still loading
       stopLive();
       ['login', 'notAdmin', 'setPw', 'dash'].forEach((id) => show(id, false));
@@ -376,6 +390,7 @@
       if (!admin) return show('notAdmin', true);
       if (askPassword) return show('setPw', true);
       show('dash', true);
+      routedUid = session.user.id;
       showTab();
       startLive();
     }
