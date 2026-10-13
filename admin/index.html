@@ -626,8 +626,12 @@
       const close = () => { $('drawerHost').innerHTML = ''; };
       $('drawerBack').onclick = close; $('drawerClose').onclick = close;
       for (const b of $('drawer').querySelectorAll('[data-mod]')) b.onclick = async () => {
-        if (b.dataset.mod === 'block' && !confirm(`Block ${u.nickname}? They can't request or share until unblocked.`)) return;
-        const { data, error } = await sb.rpc('admin_moderate', { p_id: u.id, p_action: b.dataset.mod });
+        let reason = null;
+        if (b.dataset.mod === 'block') {
+          reason = prompt(`Block ${u.nickname}? They see "account blocked" and can't request or share until unblocked.\n\nReason (for your own log, optional):`, '');
+          if (reason === null) return;
+        }
+        const { data, error } = await sb.rpc('admin_moderate', { p_id: u.id, p_action: b.dataset.mod, p_reason: reason });
         if (error) return $('userMsg').textContent = errText(error);
         renderUser(data); loadUsers();
       };
