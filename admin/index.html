@@ -142,8 +142,8 @@
       .bar input, .bar select { max-width: none; width: 100%; flex-basis: 100%; }
       th, td { padding: 8px 10px; font-size: 14px; }
       /* users: sign-in, chains, joined · exchanges: chain, updated · reports: emailed · stops: decided */
-      #userList th:nth-child(3), #userList td:nth-child(3), #userList th:nth-child(5), #userList td:nth-child(5),
-      #userList th:nth-child(8), #userList td:nth-child(8),
+      #userList th:nth-child(4), #userList td:nth-child(4), #userList th:nth-child(6), #userList td:nth-child(6),
+      #userList th:nth-child(9), #userList td:nth-child(9),
       #exList th:nth-child(3), #exList td:nth-child(3), #exList th:nth-child(7), #exList td:nth-child(7),
       #reportList th:nth-child(7), #reportList td:nth-child(7),
       #stopList th:nth-child(5), #stopList td:nth-child(5) { display: none; }
@@ -557,8 +557,9 @@
       const seq = ++userSeq;
       const { data: u, error } = await sb.rpc('admin_users', { p_limit: PAGE, p_offset: offset, p_q: $('userQ').value.trim() || null });
       if (error || seq !== userSeq) return;
-      $('userList').innerHTML = table(['', 'Nickname', 'Sign-in', 'Email', 'Chains', 'Gave', 'Got', 'Joined', 'Last seen', ''],
-        u.rows.map((x) => `<tr><td>${avatarImg(x)}</td><td>${userLink(x.id, x.nickname)}</td><td class="dim">${esc(x.method)}</td><td class="dim">${esc(x.email ?? '')}</td><td>${esc(x.chains ?? '')}</td><td>${x.given}</td><td>${x.received}</td><td class="dim">${time(x.created_at)}</td><td class="dim">${ago(x.last_sign_in_at)}</td><td class="flag">${[x.is_blocked && 'blocked', x.in_cooldown && 'cooldown', x.flagged && 'flagged', !x.has_push && 'no push'].filter(Boolean).join(' · ')}</td></tr>`));
+      const device = (x) => x.platform ? `${x.platform === 'ios' ? 'iPhone' : x.platform === 'android' ? 'Android' : 'Web'}${x.app_build ? ` · ${x.app_build}` : ''}` : '—';
+      $('userList').innerHTML = table(['', 'Nickname', 'Device', 'Sign-in', 'Email', 'Chains', 'Gave', 'Got', 'Joined', 'Last seen', ''],
+        u.rows.map((x) => `<tr><td>${avatarImg(x)}</td><td>${userLink(x.id, x.nickname)}</td><td class="dim">${device(x)}</td><td class="dim">${esc(x.method)}</td><td class="dim">${esc(x.email ?? '')}</td><td>${esc(x.chains ?? '')}</td><td>${x.given}</td><td>${x.received}</td><td class="dim">${time(x.created_at)}</td><td class="dim">${ago(x.last_seen_at ?? x.last_sign_in_at)}</td><td class="flag">${[x.is_blocked && 'blocked', x.in_cooldown && 'cooldown', x.flagged && 'flagged', !x.has_push && 'no push'].filter(Boolean).join(' · ')}</td></tr>`));
       pager('userPager', u.total, offset, loadUsers);
       fillSigned($('userList'), 'avatars', 'avatar');
     }
