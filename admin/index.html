@@ -311,6 +311,17 @@
           <p class="msg" id="donateMsg"></p>
         </section>
         <section>
+          <h2>App updates</h2>
+          <p class="log">The Android build script fills these after each release. Phones on an older build see "Update" in Profile; a build below the minimum is blocked until updated (0 = nothing blocked).</p>
+          <form class="addAdmin" id="updateForm">
+            <input id="updVersion" placeholder="0.5.5" style="max-width:120px" required>
+            <input id="updBuild" type="number" min="1" placeholder="latest build" style="max-width:140px" required>
+            <input id="updMin" type="number" min="0" placeholder="min build (0 = none)" style="max-width:170px" required>
+            <button class="primary" id="updBtn">Save</button>
+          </form>
+          <p class="msg" id="updMsg"></p>
+        </section>
+        <section>
           <h2>Your account</h2>
           <button id="changePw">Change password</button>
         </section>
@@ -743,6 +754,8 @@
       const [{ data: a }, { data: log }, { data: d }, { data: ref }, { data: donate }] = await Promise.all([
         sb.rpc('admin_admins'), sb.rpc('admin_log_recent', { p_limit: 50 }), sb.rpc('admin_blocked_domains'),
         sb.rpc('admin_email_refusals', { p_limit: 50 }), sb.rpc('donate_url')]);
+      const { data: upd } = await sb.rpc('app_update_info');
+      if (upd) { $('updVersion').value = upd.latest_version ?? ''; $('updBuild').value = upd.latest_build ?? ''; $('updMin').value = upd.min_build ?? 0; }
       $('donateUrl').value = donate ?? '';
       $('donateMsg').textContent = donate ? 'On: the button is live in the app.' : 'Off: no button in the app.';
       if (a) renderAdmins(a);
@@ -793,6 +806,13 @@
       renderDomains(data);
     });
 
+    $('updateForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const { data, error } = await sb.rpc('admin_set_update', { p_latest_version: $('updVersion').value.trim(),
+        p_latest_build: Number($('updBuild').value), p_min_build: Number($('updMin').value) });
+      $('updMsg').textContent = error ? ({ bad_version: 'Version like 0.5.5.', bad_build: 'Min build must be 0…latest.' })[error.message] ?? error.message
+        : `Saved: latest ${data.latest_version} (${data.latest_build}), minimum ${data.min_build}.`;
+    });
     $('donateForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const { data, error } = await sb.rpc('admin_set_donate_url', { p_url: $('donateUrl').value });
