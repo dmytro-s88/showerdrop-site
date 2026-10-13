@@ -243,6 +243,7 @@
             <option value="searching">searching</option><option value="accepted">accepted</option>
             <option value="queued">in line</option><option value="code_sent">code sent</option><option value="retry_needed">retry needed</option>
           </select>
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;color:var(--dim)"><input type="checkbox" id="exHideDemo" style="width:auto;max-width:none" checked> Hide demo</label>
         </div>
         <div id="exList"></div>
         <div class="pager" id="exPager"></div>
@@ -642,13 +643,15 @@
     let exOffset = 0;
     async function loadExchanges(offset = exOffset) {
       exOffset = offset;
-      const { data: x, error } = await sb.rpc('admin_exchanges', { p_status: $('exStatus').value || null, p_limit: PAGE, p_offset: offset });
+      const { data: x, error } = await sb.rpc('admin_exchanges', { p_status: $('exStatus').value || null, p_limit: PAGE, p_offset: offset, p_hide_demo: $('exHideDemo').checked });
       if (error) return;
       $('exList').innerHTML = table(['Status', 'Stop', 'Chain', 'Receiver', 'Donor', 'Started', 'Updated', 'Notes'],
-        x.rows.map((e) => `<tr><td>${pill(e.status)}</td><td>${esc(e.stop)}</td><td class="dim">${esc(e.chain)}</td><td>${userLink(e.receiver_id, e.receiver)}</td><td>${e.donor_id ? userLink(e.donor_id, e.donor) : '-'}</td><td class="dim">${time(e.created_at)}</td><td class="dim">${ago(e.updated_at)}</td><td class="dim">${[e.decline_reason, e.queue_number ? `#${e.queue_number} in line` : '', e.retry_used ? 'retry' : '', e.has_photo ? 'photo' : ''].filter(Boolean).join(' · ')}</td></tr>`));
+        x.rows.map((e) => `<tr><td>${pill(e.status)}</td><td>${esc(e.stop)}${e.is_demo ? ' <span class="dim">(demo)</span>' : ''}</td><td class="dim">${esc(e.chain)}</td><td>${userLink(e.receiver_id, e.receiver)}</td><td>${e.donor_id ? userLink(e.donor_id, e.donor) : '-'}</td><td class="dim">${time(e.created_at)}</td><td class="dim">${ago(e.updated_at)}</td><td class="dim">${[e.decline_reason, e.queue_number ? `#${e.queue_number} in line` : '', e.retry_used ? 'retry' : '', e.has_photo ? 'photo' : ''].filter(Boolean).join(' · ')}</td></tr>`));
       pager('exPager', x.total, offset, loadExchanges);
     }
     $('exStatus').addEventListener('change', () => loadExchanges(0));
+    try { $('exHideDemo').checked = localStorage.getItem('exHideDemo') !== '0'; } catch { /* default: hide */ }
+    $('exHideDemo').addEventListener('change', () => { try { localStorage.setItem('exHideDemo', $('exHideDemo').checked ? '1' : '0'); } catch { /* ignore */ } loadExchanges(0); });
 
     // ---- reports ------------------------------------------------------------
     let repOffset = 0;
