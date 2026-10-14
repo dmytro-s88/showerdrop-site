@@ -23,6 +23,7 @@
     button.primary { background: var(--steel); color: var(--ink); border-color: var(--steel); font-weight: 700; }
     button.danger { border-color: #e0524f; color: #f08a88; }
     button.small { padding: 5px 10px; font-size: 14px; }
+    div.small { font-size: 12px; margin-top: 1px; }
     button:disabled { opacity: .45; cursor: default; }
     button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     input, select {
@@ -226,7 +227,7 @@
         <div class="bar">
           <h1>Users</h1>
           <span class="spacer"></span>
-          <input id="userQ" type="search" placeholder="Search nickname or email">
+          <input id="userQ" type="search" placeholder="Search nickname, name or email">
         </div>
         <div id="userList"></div>
         <div class="pager" id="userPager"></div>
@@ -557,9 +558,9 @@
       const seq = ++userSeq;
       const { data: u, error } = await sb.rpc('admin_users', { p_limit: PAGE, p_offset: offset, p_q: $('userQ').value.trim() || null });
       if (error || seq !== userSeq) return;
-      const device = (x) => x.platform ? `${x.platform === 'ios' ? 'iPhone' : x.platform === 'android' ? 'Android' : 'Web'}${x.app_build ? ` · ${x.app_build}` : ''}` : '—';
+      const device = (x) => x.platform ? `${x.platform === 'ios' ? 'iPhone' : x.platform === 'android' ? 'Android' : 'Web'}${x.app_build ? ` · ${x.app_build}` : ''}` : '-';
       $('userList').innerHTML = table(['', 'Nickname', 'Device', 'Sign-in', 'Email', 'Chains', 'Gave', 'Got', 'Joined', 'Last seen', ''],
-        u.rows.map((x) => `<tr><td>${avatarImg(x)}</td><td>${userLink(x.id, x.nickname)}</td><td class="dim">${device(x)}</td><td class="dim">${esc(x.method)}</td><td class="dim">${esc(x.email ?? '')}</td><td>${esc(x.chains ?? '')}</td><td>${x.given}</td><td>${x.received}</td><td class="dim">${time(x.created_at)}</td><td class="dim">${ago(x.last_seen_at ?? x.last_sign_in_at)}</td><td class="flag">${[x.is_blocked && 'blocked', x.in_cooldown && 'cooldown', x.flagged && 'flagged', !x.has_push && 'no push'].filter(Boolean).join(' · ')}</td></tr>`));
+        u.rows.map((x) => `<tr><td>${avatarImg(x)}</td><td>${userLink(x.id, x.nickname)}${x.name ? `<div class="dim small">${esc(x.name)}</div>` : ''}</td><td class="dim">${device(x)}</td><td class="dim">${esc(x.method)}</td><td class="dim">${esc(x.email ?? '')}</td><td>${esc(x.chains ?? '')}</td><td>${x.given}</td><td>${x.received}</td><td class="dim">${time(x.created_at)}</td><td class="dim">${ago(x.last_seen_at ?? x.last_sign_in_at)}</td><td class="flag">${[x.is_blocked && 'blocked', x.in_cooldown && 'cooldown', x.flagged && 'flagged', !x.has_push && 'no push'].filter(Boolean).join(' · ')}</td></tr>`));
       pager('userPager', u.total, offset, loadUsers);
       fillSigned($('userList'), 'avatars', 'avatar');
     }
@@ -594,6 +595,7 @@
         <h2>${avatarImg(u, 'ava big')}${esc(u.nickname)}</h2>
         <div class="kv">
           <div>Email</div><div>${esc(u.email)}</div>
+          <div>Name</div><div>${u.name ? `${esc(u.name)} <span class="dim">(from Google)</span>` : '<span class="dim">- (signed in by email code)</span>'}</div>
           <div>Joined</div><div>${time(u.created_at)} · last seen ${ago(u.last_sign_in_at)}</div>
           <div>Chains</div><div>${esc(u.chains || '-')}</div>
           <div>Language</div><div>${esc(u.language)}${u.has_push ? '' : ' · no push token'}</div>
