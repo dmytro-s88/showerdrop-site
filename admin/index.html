@@ -711,7 +711,9 @@
       map.setView(at, 17);
       show('mapTools', true);
       if (window.innerWidth <= 760) $('map').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      $('approveStop').disabled = $('rejectStop').disabled = current.status !== 'pending';
+      // A decision can be changed later (approved by mistake → Reject takes it off the map).
+      $('approveStop').disabled = current.status === 'approved';
+      $('rejectStop').disabled = current.status === 'rejected';
       $('gmaps').href = `https://www.google.com/maps?q=${current.lat},${current.lng}&t=k`;
       $('mapHint').textContent = `${current.chain} #${current.id} · ${current.status}. Drag the pin onto the building with the showers, then save.`;
       $('stopMsg').textContent = '';
@@ -728,10 +730,17 @@
       if (!error) { current.lat = lat; current.lng = lng; $('gmaps').href = `https://www.google.com/maps?q=${lat},${lng}&t=k`; }
     };
     const decide = async (approve) => {
-      if (!approve && !confirm('Reject this stop? It will not appear on the map.')) return;
+      const wasApproved = current.status === 'approved';
+      if (!approve && !confirm(wasApproved
+        ? 'Take this stop off the map? Drivers sharing there are signed off.'
+        : 'Reject this stop? It will not appear on the map.')) return;
       const { data, error } = await sb.rpc('admin_stop_decide', { p_id: current.id, p_approve: approve });
-      $('stopMsg').textContent = error ? error.message : (data === 'approved' ? 'Approved: the stop is live, the driver was told.' : `Result: ${data}`);
-      loadStops();
+      const wasPending = current.status === 'pending';
+      await loadStops();  // reselects the row (which clears the message), so the message goes after it
+      $('stopMsg').textContent = error ? error.message
+        : data === 'approved' ? (wasPending ? 'Approved: the stop is live, the driver was told.' : 'Back on the map.')
+        : data === 'rejected' ? (wasApproved ? 'Removed: the stop is off the map.' : 'Rejected: it will not appear on the map.')
+        : `Result: ${data}`;
     };
     $('approveStop').onclick = () => decide(true);
     $('rejectStop').onclick = () => decide(false);
