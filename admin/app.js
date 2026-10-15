@@ -259,12 +259,13 @@
           <div>Received</div><div><b>${u.received_real + u.received_adj}</b> = ${u.received_real} real ${u.received_adj >= 0 ? '+' : '−'} ${Math.abs(u.received_adj)} adjusted</div>
           <div>Fair use</div><div>received − given = <b>${u.balance}</b> (warn at 3, blocked at 5)</div>
           <div>Strikes (30 d)</div><div>${u.strikes_30d}</div>
-          <div>State</div><div class="flag">${[u.is_blocked && 'blocked', u.cooldown_until && new Date(u.cooldown_until) > Date.now() && `cooldown until ${time(u.cooldown_until)}`, u.flagged && 'flagged'].filter(Boolean).join(' · ') || '<span style="color:var(--accent)">ok</span>'}</div>
+          <div>State</div><div class="flag">${[u.is_blocked && 'blocked', u.cooldown_until && new Date(u.cooldown_until) > Date.now() && `cooldown until ${time(u.cooldown_until)}`, u.flagged && 'flagged', u.dev_mode && 'developer mode'].filter(Boolean).join(' · ') || '<span style="color:var(--accent)">ok</span>'}</div>
         </div>
         <div class="actions">
           <button class="small ${u.is_blocked ? '' : 'danger'}" data-mod="${u.is_blocked ? 'unblock' : 'block'}">${u.is_blocked ? 'Unblock' : 'Block'}</button>
           <button class="small" data-mod="clear_cooldown" ${u.cooldown_until && new Date(u.cooldown_until) > Date.now() ? '' : 'disabled'}>Clear cooldown</button>
           <button class="small" data-mod="${u.flagged ? 'unflag' : 'flag'}">${u.flagged ? 'Unflag' : 'Flag'}</button>
+          <button class="small" data-mod="${u.dev_mode ? 'dev_off' : 'dev_on'}" title="Developer mode: 5 taps on the version line in the app open a screen that logs every truck stop passed (background location)">Developer mode: ${u.dev_mode ? 'on' : 'off'}</button>
         </div>
         <h3>Adjust counters</h3>
         <form class="adjust" id="adjustForm">
