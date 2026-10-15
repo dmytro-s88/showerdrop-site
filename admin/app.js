@@ -367,7 +367,8 @@
     async function loadIssues() {
       const { data, error } = await sb.rpc('admin_stop_issues');
       if (error) return $('issueMsg').textContent = error.message;
-      const what = (x) => x.kind === 'not_here' ? 'No truck stop here' : `Really ${x.new_chain ? esc(x.new_chain) : 'a chain not in the app'}`;
+      const what = (x) => x.kind === 'not_here' ? 'No truck stop here'
+        : `Really ${x.new_chain ? esc(x.new_chain) : x.other_chain ? `${esc(x.other_chain)} (not in the app)` : 'a chain not in the app'}`;
       const where = (x) => [x.interstate && `${esc(x.interstate)}${x.exit ? ' exit ' + esc(x.exit) : ''}`, [x.city, x.state].filter(Boolean).map(esc).join(', ')].filter(Boolean).join(', ');
       $('issueList').innerHTML = data.length ? table(['', 'Stop', 'Problem', 'From', 'When', ''],
         data.map((x) => `<tr><td>${pill(x.status)}</td>
@@ -377,6 +378,15 @@
           <td>${userLink(x.reporter_id, x.reporter)}</td><td class="dim">${time(x.created_at)}</td>
           <td>${x.status === 'pending' ? `<button class="small" data-issue="${x.id}" data-approve="1">✅ Approve</button> <button class="small danger" data-issue="${x.id}" data-approve="0">❌ Reject</button>` : `<span class="dim">${x.decided_at ? time(x.decided_at) : ''}</span>`}</td></tr>`))
         : '<p class="dim">Nothing reported yet.</p>';
+      loadOtherChains();
+    }
+    async function loadOtherChains() {
+      const { data, error } = await sb.rpc('admin_other_chains');
+      if (error) return;
+      $('otherChains').innerHTML = data.length ? table(['Chain', 'Reports', 'Drivers', 'Last', 'Where'],
+        data.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.reports}</td><td>${x.drivers}</td><td class="dim">${time(x.last_at)}</td>
+          <td>${x.places.slice(0, 5).map((p, i) => `<a href="https://www.google.com/maps?q=${p.lat},${p.lng}&t=k" target="_blank" rel="noopener">${i + 1}</a>`).join(' ')}${x.places.length > 5 ? ' …' : ''}</td></tr>`))
+        : '<p class="dim">None yet.</p>';
     }
     $('issueList').addEventListener('click', async (e) => {
       const b = e.target.closest('[data-issue]');
