@@ -360,7 +360,33 @@
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(map);
       }
       if (current) selectStop(current.id); else if (data.length) selectStop(data[0].id);
+      loadIssues();
     }
+
+    // ---- problems with existing stops ("something wrong with this truck stop?") ----
+    async function loadIssues() {
+      const { data, error } = await sb.rpc('admin_stop_issues');
+      if (error) return $('issueMsg').textContent = error.message;
+      const what = (x) => x.kind === 'not_here' ? 'No truck stop here' : `Really ${x.new_chain ? esc(x.new_chain) : 'a chain not in the app'}`;
+      const where = (x) => [x.interstate && `${esc(x.interstate)}${x.exit ? ' exit ' + esc(x.exit) : ''}`, [x.city, x.state].filter(Boolean).map(esc).join(', ')].filter(Boolean).join(', ');
+      $('issueList').innerHTML = data.length ? table(['', 'Stop', 'Problem', 'From', 'When', ''],
+        data.map((x) => `<tr><td>${pill(x.status)}</td>
+          <td>${esc(x.chain)}${x.number ? ' #' + esc(x.number) : ''} <span class="dim">#${x.stop_id}</span><div class="dim small">${where(x)}${x.stop_active ? '' : ' · off the map'}</div>
+            <a href="https://www.google.com/maps?q=${x.lat},${x.lng}&t=k" target="_blank" rel="noopener">satellite</a></td>
+          <td>${what(x)}${x.same > 1 ? ` <span class="dim">(${x.same} drivers)</span>` : ''}</td>
+          <td>${userLink(x.reporter_id, x.reporter)}</td><td class="dim">${time(x.created_at)}</td>
+          <td>${x.status === 'pending' ? `<button class="small" data-issue="${x.id}" data-approve="1">✅ Approve</button> <button class="small danger" data-issue="${x.id}" data-approve="0">❌ Reject</button>` : `<span class="dim">${x.decided_at ? time(x.decided_at) : ''}</span>`}</td></tr>`))
+        : '<p class="dim">Nothing reported yet.</p>';
+    }
+    $('issueList').addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-issue]');
+      if (!b) return;
+      const approve = b.dataset.approve === '1';
+      if (approve && !confirm('Fix this stop as the driver said? (A new chain, or the stop goes off the map.)')) return;
+      const { data, error } = await sb.rpc('admin_stop_issue_decide', { p_id: Number(b.dataset.issue), p_approve: approve });
+      await loadIssues();
+      $('issueMsg').textContent = error ? error.message : data === 'approved' ? 'Done: the stop is fixed.' : data === 'rejected' ? 'Rejected: the stop stays as it was.' : `Result: ${data}`;
+    });
     function selectStop(id) {
       current = stopRows.find((s) => s.id === id);
       if (!current) return;
