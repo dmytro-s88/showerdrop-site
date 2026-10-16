@@ -52,7 +52,8 @@
 
     .bar { display: flex; align-items: center; gap: 14px; padding: 18px 0 6px; flex-wrap: wrap; }
     .bar h1 { margin: 0; font-size: 26px; }
-    .live { display: inline-flex; align-items: center; gap: 8px; color: var(--dim); font-size: 14px; }
+    /* padding/border reset: the home page's .live section (../style.css) must not leak into this badge. */
+    .live { display: inline-flex; align-items: center; gap: 8px; color: var(--dim); font-size: 14px; padding: 0; border-top: 0; }
     .live i { width: 10px; height: 10px; border-radius: 50%; background: var(--steel-dark); }
     .live.on i { background: var(--accent); box-shadow: 0 0 0 4px rgba(79, 191, 106, .22); }
     .bar .spacer { flex: 1; }
@@ -197,9 +198,9 @@
     /* Phones: one scrollable row of tabs, full-width search, tighter tables with the secondary
        columns hidden (the table still scrolls sideways for the rest), a shorter map. */
     @media (max-width: 700px) {
-      nav.tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin: 10px -16px 4px; padding: 0 16px; }
-      nav.tabs::-webkit-scrollbar { display: none; }
-      nav.tabs a { padding: 10px 12px; white-space: nowrap; }
+      /* Phones: the six tabs in two rows of three, all in sight (no sideways scrolling). */
+      nav.tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 10px 0 4px; }
+      nav.tabs a { padding: 10px 4px; text-align: center; white-space: nowrap; }
       .bar { padding-top: 10px; }
       .bar h1 { font-size: 22px; }
       .bar input, .bar select { max-width: none; width: 100%; flex-basis: 100%; }
@@ -308,7 +309,7 @@
           <span class="spacer"></span>
           <button id="refresh">Refresh</button>
         </div>
-        <div class="dash" id="dash">
+        <div class="dash">
           <div class="nowBoard" id="nowBoard"></div>
           <div class="needs" id="needs"></div>
           <div class="chartBox" id="chartBox"></div>
