@@ -537,6 +537,7 @@
       bad_email: "That doesn't look like an email address.",
       already_admin: 'This email is already an admin.',
       cannot_remove_self: "You can't remove yourself. Ask another admin.",
+      owner_admin: "This is the owner's email; it can't be removed.",
       last_admin: "You can't remove the last admin.",
       not_in_list: 'This email is not in the list anymore.',
     };
@@ -546,7 +547,7 @@
         a.admins.map((x) => `<tr><td>${esc(x.email)}${x.email === a.me ? '<span class="you">you</span>' : ''}</td>
           <td class="dim">${x.has_account ? 'yes' : 'not yet'}</td>
           <td class="dim">${x.last_sign_in_at ? ago(x.last_sign_in_at) : '-'}</td>
-          <td>${x.email === a.me ? '' : `<button class="small" data-remove="${esc(x.email)}">Remove</button>`}</td></tr>`));
+          <td>${x.email === a.me || x.email === a.owner ? '' : `<button class="small" data-remove="${esc(x.email)}">Remove</button>`}</td></tr>`));
     }
     function renderDomains(d) {
       $('domainCount').textContent = `${d.total} in the list`;
