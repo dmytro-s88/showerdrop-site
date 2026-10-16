@@ -90,10 +90,12 @@
       if (!session) return show('login', true);
       $('whoEmail').textContent = session.user.email ?? '';
       // A session kept in this browser may belong to an account that no longer exists (deleted, or the
-      // database was reset): ask the server, and start over with sign-in if it's gone.
+      // database was reset): ask the server, and start over with sign-in if it says so. Only then: a
+      // network hiccup (the Mac just woke up) is no reason to sign out, and signing out here only ever
+      // ends this browser's session (the same account stays signed in in the app).
       const { error: userErr } = await sb.auth.getUser();
       if (seq !== routeSeq) return;
-      if (userErr) { await sb.auth.signOut({ scope: 'local' }); return; }
+      if (userErr && [401, 403].includes(userErr.status)) { await sb.auth.signOut({ scope: 'local' }); return; }
       const { data: admin } = await sb.rpc('is_admin');
       if (seq !== routeSeq) return;
       if (!admin) return show('notAdmin', true);
