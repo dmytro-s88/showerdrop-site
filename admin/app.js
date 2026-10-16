@@ -438,7 +438,26 @@
       $('gmaps').href = `https://www.google.com/maps?q=${current.lat},${current.lng}&t=k`;
       $('mapHint').textContent = `${current.chain} #${current.id} · ${current.status}. Drag the pin onto the building with the showers, then save.`;
       $('stopMsg').textContent = '';
+      loadReportShowers();
     }
+    // "Has showers" for the stop this report made (looked up by its stop ID).
+    async function loadReportShowers() {
+      show('reportShowersBox', false);
+      if (!current?.stop_id) return;
+      const { data } = await sb.rpc('admin_stop_search', { p_q: String(current.stop_id) });
+      const stop = (data ?? []).find((x) => x.id === current.stop_id);
+      if (!stop) return;
+      $('reportShowers').checked = stop.has_showers;
+      $('reportShowersText').innerHTML = stop.has_showers ? 'Has showers' : '<b>No showers</b>';
+      show('reportShowersBox', true);
+    }
+    $('reportShowers').onchange = async () => {
+      const has = $('reportShowers').checked;
+      if (!has && !confirm('Mark this stop as having no showers? Drivers there are signed off sharing, and requests are refused.')) { $('reportShowers').checked = true; return; }
+      const { error } = await sb.rpc('admin_stop_set_showers', { p_id: current.stop_id, p_has: has });
+      $('stopMsg').textContent = error ? error.message : has ? 'Showers on: the stop works as usual.' : 'Marked: no showers at this stop.';
+      loadReportShowers();
+    };
     $('stopList').addEventListener('click', (e) => {
       if (e.target.closest('[data-user]')) return;
       const tr = e.target.closest('tr[data-stop]');
