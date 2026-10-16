@@ -283,7 +283,11 @@
         ${table(['Status', 'Role', 'Stop', 'Other driver', 'When'], u.exchanges.map((x) => `<tr><td>${pill(x.status)}</td><td class="dim">${esc(x.role)}</td><td>${esc(x.stop)}</td><td>${userLink(x.other_id, x.other)}</td><td class="dim">${time(x.created_at)}</td></tr>`))}
         <h3>Reports they made</h3>
         ${table(['When', 'Reason', 'Resolved'], u.reports.map((r) => `<tr><td class="dim">${time(r.created_at)}</td><td class="wrap">${esc(r.reason)}</td><td class="dim">${r.resolved ? 'yes' : 'no'}</td></tr>`))}
+        ${u.dev_mode ? `<h3>Truck stop passes <span class="dim">(developer mode)</span></h3>
+          <p class="dim small">Tap a pass to see it on the map: <b style="color:#4fbf6a">●</b> the truck stop, <b style="color:#3d8bfd">●</b> where the phone was at its closest. The circle is the 300 m zone.</p>
+          <div id="passMap" class="passMap"></div><div id="passList"><p class="dim">Loading…</p></div>` : ''}
       </div>`;
+      if (u.dev_mode) loadPasses(u.id);
       fillSigned($('drawer'), 'avatars', 'avatar');
       const close = () => { $('drawerHost').innerHTML = ''; };
       $('drawerBack').onclick = close; $('drawerClose').onclick = close;
@@ -383,6 +387,46 @@
         : '<p class="dim">Nothing reported yet.</p>';
       loadOtherChains();
     }
+    // ---- a developer-mode driver's journal of passes, in the user card ----
+    async function loadPasses(userId) {
+      const { data, error } = await sb.rpc('admin_stop_passes', { p_user: userId });
+      if (!$('passList')) return;   // the card was closed meanwhile
+      if (error) return $('passList').innerHTML = `<p class="msg">${esc(error.message)}</p>`;
+      const dur = (sec) => sec < 90 ? `${Math.max(1, Math.round(sec))} s` : `${Math.round(sec / 60)} min`;
+      const verdict = (p) => (p.zone_seconds ?? 0) >= 60 ? ['pulled in', `${dur(p.zone_seconds)} in the zone`, 'var(--accent)']
+        : p.min_distance_m != null && p.min_distance_m <= 300 ? ['drove through', p.zone_seconds ? `${dur(p.zone_seconds)} in the zone` : '', '#e8b04a']
+        : ['near', 'outside the zone', 'var(--dim)'];
+      const where = (p) => [p.interstate && `${esc(p.interstate)}${p.exit ? ' exit ' + esc(p.exit) : ''}`, [p.city, p.state].filter(Boolean).map(esc).join(', ')].filter(Boolean).join(', ');
+      // A list, not a table: it has to fit a phone screen.
+      $('passList').innerHTML = data.length ? `<div class="found">${data.map((p, i) => { const [v, sub, color] = verdict(p); return `<div class="foundRow clickable" data-pass="${i}">
+          <div class="foundInfo"><div class="dim small">${time(p.entered_at)}</div>
+            <b>${esc(p.chain)}${p.number ? ' #' + esc(p.number) : ''}</b> <span class="dim small">${where(p) || ''}${p.has_showers ? '' : ' · no showers'}</span>
+            <div><b style="color:${color}">${v}</b> <span class="dim small">${[sub, p.between_points && 'between fixes'].filter(Boolean).join(' · ')}</span></div>
+            <div class="dim small">closest ${p.min_distance_m ?? '-'} m${p.min_distance_m != null ? ` (${(p.min_distance_m / 1609.34).toFixed(2)} mi)` : ''}${p.speed_kmh != null ? ` · ${p.speed_kmh} km/h` : ''}</div></div>
+        </div>`; }).join('')}</div>`
+        : '<p class="dim">No passes yet.</p>';
+      if (!data.length) return show('passMap', false);
+      const map = L.map('passMap', { scrollWheelZoom: false });
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(map);
+      const layer = L.layerGroup().addTo(map);
+      const showPass = (i) => {
+        const p = data[i];
+        layer.clearLayers();
+        const stop = [p.stop_lat, p.stop_lng];
+        L.circle(stop, { radius: 300, color: '#4fbf6a', weight: 1, fillOpacity: 0.08 }).addTo(layer);
+        L.circleMarker(stop, { radius: 7, color: '#4fbf6a', fillColor: '#4fbf6a', fillOpacity: 1 }).addTo(layer).bindTooltip(p.chain);
+        if (p.closest_lat != null) {
+          const me = [p.closest_lat, p.closest_lng];
+          L.polyline([stop, me], { color: '#3d8bfd', weight: 2, dashArray: '4 4' }).addTo(layer);
+          L.circleMarker(me, { radius: 7, color: '#3d8bfd', fillColor: '#3d8bfd', fillOpacity: 1 }).addTo(layer).bindTooltip(`${p.min_distance_m} m`);
+          map.fitBounds(L.latLngBounds([stop, me]).pad(0.6), { maxZoom: 17 });
+        } else map.setView(stop, 16);
+        for (const row of $('passList').querySelectorAll('[data-pass]')) row.classList.toggle('picked', Number(row.dataset.pass) === i);
+      };
+      $('passList').addEventListener('click', (e) => { const row = e.target.closest('[data-pass]'); if (row) showPass(Number(row.dataset.pass)); });
+      setTimeout(() => { map.invalidateSize(); showPass(0); }, 50);
+    }
+
     // ---- any stop: search, and the "Has showers" switch ----
     let stopQuery = '';
     async function searchStops() {
