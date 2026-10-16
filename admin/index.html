@@ -166,6 +166,12 @@
       p.small { font-size: 14px; margin: 0 0 10px; }
       .stopSearch { display: flex; gap: 8px; margin-bottom: 10px; }
       .stopSearch input { flex: 1; min-width: 0; }
+      .found { background: var(--surface2); border-radius: 12px; }
+      .foundRow { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-top: 1px solid #2c3638; }
+      .foundRow:first-child { border-top: 0; }
+      .foundInfo { flex: 1; min-width: 0; }
+      .showersBox { white-space: nowrap; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+      .showersBox input { width: 20px; height: 20px; }
   </style>
 </head>
 <body>
@@ -362,6 +368,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous"></script>
-  <script src="app.js?v=20261016d"></script>
+  <script src="app.js?v=20261016e"></script>
 </body>
 </html>

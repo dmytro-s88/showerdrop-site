@@ -387,10 +387,12 @@
       const { data, error } = await sb.rpc('admin_stop_search', { p_q: stopQuery });
       if (error) return $('stopFoundMsg').textContent = error.message;
       const where = (x) => [x.interstate && `${esc(x.interstate)}${x.exit ? ' exit ' + esc(x.exit) : ''}`, [x.city, x.state].filter(Boolean).map(esc).join(', ')].filter(Boolean).join(', ');
-      $('stopFound').innerHTML = data.length ? table(['Stop', 'Where', 'Has showers'],
-        data.map((x) => `<tr><td>${esc(x.chain)}${x.number ? ' #' + esc(x.number) : ''} <span class="dim">#${x.id}</span>${x.is_active ? '' : ' <span class="dim">· off the map</span>'}</td>
-          <td>${where(x) || '-'} <a href="https://www.google.com/maps?q=${x.lat},${x.lng}&t=k" target="_blank" rel="noopener">satellite</a></td>
-          <td><label><input type="checkbox" data-showers="${x.id}" ${x.has_showers ? 'checked' : ''}> ${x.has_showers ? 'yes' : '<b>no</b>'}</label></td></tr>`))
+      // A list, not a table: on a phone the switch must stay on screen next to the name.
+      $('stopFound').innerHTML = data.length ? `<div class="found">${data.map((x) => `<div class="foundRow">
+          <div class="foundInfo"><b>${esc(x.chain)}</b> <span class="dim">#${x.id}</span>${x.is_active ? '' : ' <span class="dim">· off the map</span>'}
+            <div class="dim small">${where(x) || '-'} · <a href="https://www.google.com/maps?q=${x.lat},${x.lng}&t=k" target="_blank" rel="noopener">satellite</a></div></div>
+          <label class="showersBox"><input type="checkbox" data-showers="${x.id}" ${x.has_showers ? 'checked' : ''}> ${x.has_showers ? 'Has showers' : '<b>No showers</b>'}</label>
+        </div>`).join('')}</div>`
         : '<p class="dim">Nothing found.</p>';
     }
     $('stopSearch').onsubmit = (e) => { e.preventDefault(); stopQuery = $('stopQ').value.trim(); $('stopFoundMsg').textContent = ''; searchStops(); };
