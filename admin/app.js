@@ -332,15 +332,30 @@
       const { data: r, error } = await sb.rpc('admin_reports', { p_limit: PAGE, p_offset: offset, p_open: f === '' ? null : f === 'open' });
       if (error) return;
       $('reportList').innerHTML = table(['When', 'Reason', 'From', 'Stop', 'Exchange', 'Photo', 'Emailed', ''],
-        r.rows.map((x) => `<tr><td class="dim">${time(x.created_at)}</td><td class="wrap">${x.stop_status ? `${pill(x.stop_status)} <a href="#stops">Stops</a> · ` : ''}${esc(x.reason).replace(/(https:\/\/\S+)/g, '<a href="$1" target="_blank" rel="noopener">map</a>')}</td><td>${userLink(x.reporter_id, x.reporter)}</td><td>${esc(x.stop ?? '')}</td><td>${x.exchange_status ? pill(x.exchange_status) : '-'}</td><td>${x.photo_path ? `<img class="thumb" data-photo="${esc(x.photo_path)}" alt="code photo">` : '-'}</td><td class="dim">${x.notified_at ? time(x.notified_at) : 'not yet'}</td>
-          <td><button class="small" data-resolve="${x.id}" data-to="${x.resolved ? 'false' : 'true'}">${x.resolved ? 'Reopen' : 'Resolve'}</button> <button class="small danger" data-delete="${x.id}">Delete</button></td></tr>`));
+        r.rows.map((x) => `<tr><td class="dim">${time(x.created_at)}</td><td class="wrap">${x.stop_status || x.issue_status ? `${pill(x.stop_status || x.issue_status)} <a href="#stops">Stops</a> · ` : ''}${esc(x.reason).replace(/(https:\/\/\S+)/g, '<a href="$1" target="_blank" rel="noopener">map</a>')}</td><td>${userLink(x.reporter_id, x.reporter)}</td><td>${esc(x.stop ?? '')}</td><td>${x.exchange_status ? pill(x.exchange_status) : '-'}</td><td>${x.photo_path ? `<img class="thumb" data-photo="${esc(x.photo_path)}" alt="code photo">` : '-'}</td><td class="dim">${x.notified_at ? time(x.notified_at) : 'not yet'}</td>
+          <td>${repAction(x)} <button class="small danger" data-delete="${x.id}">Delete</button></td></tr>`));
       pager('repPager', r.total, offset, loadReports);
       fillSigned($('reportList'), 'code-photos', 'photo');
     }
+    // A stop problem is closed by deciding it (Approve / Reject here, the same as in Stops); a new stop from a
+    // driver is decided in Stops, where its pin can be moved first; a chain the app doesn't have is just "Seen".
+    function repAction(x) {
+      if (x.issue_status === 'pending') return `<button class="small" data-issue="${x.stop_issue_id}" data-approve="1">✅ Approve</button> <button class="small danger" data-issue="${x.stop_issue_id}" data-approve="0">❌ Reject</button>`;
+      if (x.stop_status === 'pending') return '<a href="#stops">Decide in Stops</a>';
+      if (x.stop_issue_id || x.stop_report_id) return '';   // closed by the decision
+      return `<button class="small" data-resolve="${x.id}" data-to="${x.resolved ? 'false' : 'true'}">${x.resolved ? 'Reopen' : x.other_chain ? 'Seen' : 'Resolve'}</button>`;
+    }
     $('repFilter').addEventListener('change', () => loadReports(0));
     $('reportList').addEventListener('click', async (e) => {
-      const res = e.target.closest('[data-resolve]'), del = e.target.closest('[data-delete]');
+      const res = e.target.closest('[data-resolve]'), del = e.target.closest('[data-delete]'), dec = e.target.closest('[data-issue]');
       $('repMsg').textContent = '';
+      if (dec) {
+        const approve = dec.dataset.approve === '1';
+        if (approve && !confirm('Apply what the driver reported? (A new chain, the stop off the map, or marked as having no showers.)')) return;
+        const { data, error } = await sb.rpc('admin_stop_issue_decide', { p_id: Number(dec.dataset.issue), p_approve: approve });
+        $('repMsg').textContent = error ? error.message : data === 'approved' ? 'Done: the stop is fixed.' : data === 'rejected' ? 'Rejected: the stop stays as it was.' : `Result: ${data}`;
+        loadReports(); loadOverview(); loadIssues();
+      }
       if (res) {
         const { error } = await sb.rpc('admin_report_resolve', { p_id: Number(res.dataset.resolve), p_resolved: res.dataset.to === 'true' });
         if (error) return $('repMsg').textContent = error.message;
