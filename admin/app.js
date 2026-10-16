@@ -168,7 +168,7 @@
       for (const a of $('tabs').querySelectorAll('a')) a.toggleAttribute('aria-current', a.getAttribute('href') === `#${tab}`) ;
       for (const a of $('tabs').querySelectorAll('a')) if (a.getAttribute('href') === `#${tab}`) a.setAttribute('aria-current', 'page');
       loaders[tab]();
-      if (tab === 'stops') setTimeout(() => map?.invalidateSize(), 50);
+      if (tab === 'stops') { setTimeout(() => map?.invalidateSize(), 50); loadAddChains(); }
     }
     window.addEventListener('hashchange', () => { $('drawerHost').innerHTML = ''; if (!$('dash').hidden) showTab(); });
 
@@ -426,6 +426,43 @@
       $('passList').addEventListener('click', (e) => { const row = e.target.closest('[data-pass]'); if (row) showPass(Number(row.dataset.pass)); });
       setTimeout(() => { map.invalidateSize(); showPass(0); }, 50);
     }
+
+    // ---- add a truck stop by hand: chain + coordinates (pasted from Google Maps, or a Maps link) ----
+    let chainsLoaded = false;
+    async function loadAddChains() {
+      if (chainsLoaded) return;
+      const { data } = await sb.from('chains').select('id,name').order('name');
+      if (!data) return;
+      $('addChain').innerHTML = '<option value="">Chain…</option>' + data.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+      chainsLoaded = true;
+    }
+    // "36.69653, -97.34925", "36.69653,-97.34925" or a link with "@36.69653,-97.34925,17z" / "?q=36.69,-97.34".
+    const parseCoords = (t) => {
+      const m = String(t).match(/(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)/);
+      if (!m) return null;
+      const lat = Number(m[1]), lng = Number(m[2]);
+      return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null;
+    };
+    $('addStop').onsubmit = async (e) => {
+      e.preventDefault();
+      const c = parseCoords($('addCoords').value);
+      if (!c) return $('addStopMsg').textContent = 'Coordinates look wrong. Paste them like 36.69653, -97.34925.';
+      if (!$('addChain').value) return $('addStopMsg').textContent = 'Pick the chain.';
+      const { data, error } = await sb.rpc('admin_add_stop', {
+        p_chain_id: Number($('addChain').value), p_lat: c.lat, p_lng: c.lng,
+        p_number: $('addNumber').value, p_city: $('addCity').value, p_state: $('addState').value,
+        p_interstate: $('addInterstate').value, p_exit: $('addExit').value, p_has_showers: $('addShowers').checked,
+      });
+      if (error) {
+        const dup = error.message.match(/^stop_exists:(\d+)/);
+        $('addStopMsg').textContent = dup ? `This chain already has a stop within 500 m (#${dup[1]}). Search for ${dup[1]} below to check it.`
+          : error.message === 'bad_stop' ? 'Check the chain and the coordinates.' : error.message;
+        return;
+      }
+      $('addStopMsg').innerHTML = `Added: ${esc(data.chain)} <span class="dim">#${data.id}</span> · <a href="https://www.google.com/maps?q=${c.lat},${c.lng}&t=k" target="_blank" rel="noopener">check on the satellite</a>. Drivers there see it now.`;
+      for (const id of ['addCoords', 'addNumber', 'addCity', 'addState', 'addInterstate', 'addExit']) $(id).value = '';
+      $('addShowers').checked = true;
+    };
 
     // ---- any stop: search, and the "Has showers" switch ----
     let stopQuery = '';
