@@ -93,7 +93,7 @@
       // database was reset): ask the server, and start over with sign-in if it's gone.
       const { error: userErr } = await sb.auth.getUser();
       if (seq !== routeSeq) return;
-      if (userErr) { await sb.auth.signOut(); return; }
+      if (userErr) { await sb.auth.signOut({ scope: 'local' }); return; }
       const { data: admin } = await sb.rpc('is_admin');
       if (seq !== routeSeq) return;
       if (!admin) return show('notAdmin', true);
@@ -152,7 +152,8 @@
     });
     $('skipPw').addEventListener('click', async () => { askPassword = false; route((await sb.auth.getSession()).data.session); });
     $('changePw').addEventListener('click', async () => { askPassword = true; route((await sb.auth.getSession()).data.session); });
-    $('signOut').addEventListener('click', () => sb.auth.signOut());
+    // This browser only: the same account stays signed in in the app on the phone.
+    $('signOut').addEventListener('click', () => sb.auth.signOut({ scope: 'local' }));
     $('refresh').addEventListener('click', () => loadDashboard());
 
     // ---- tabs ---------------------------------------------------------------
