@@ -128,6 +128,8 @@
     /* Stops: list + map */
     .stops { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(300px, 1.2fr); gap: 14px; }
     .stops > div { min-width: 0; }  /* a wide list must not stretch the column past the screen */
+    .stopsMore { margin-top: 10px; }
+    .stopsMore .addStop, .stopsMore .stopSearch { max-width: 640px; }
     @media (max-width: 760px) { .stops { grid-template-columns: 1fr; } }
     #map { height: 460px; border-radius: 12px; background: var(--surface2); position: relative; z-index: 0; }  /* keeps Leaflet under the drawer */
     .mapTools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
@@ -294,7 +296,22 @@
       <div class="view" id="view-stops" hidden>
         <div class="bar"><h1>Driver-added stops</h1></div>
         <div class="stops">
-          <div><div id="stopList"></div>
+          <div><div id="stopList"></div></div>
+          <div>
+            <div id="map"></div>
+            <div class="mapTools" id="mapTools" hidden>
+              <span class="hint" id="mapHint">Drag the pin onto the building with the showers, then save.</span>
+              <button class="primary" id="savePoint">Save point</button>
+              <button id="approveStop">✅ Approve</button>
+              <button class="danger" id="rejectStop">❌ Reject</button>
+              <label class="showersBox" id="reportShowersBox" hidden><input type="checkbox" id="reportShowers"> <span id="reportShowersText">Has showers</span></label>
+              <a id="gmaps" target="_blank" rel="noopener">Open in Google Maps (satellite)</a>
+            </div>
+            <p class="msg" id="stopMsg"></p>
+          </div>
+        </div>
+        <div class="stops stopsMore">
+          <div>
             <h2 class="sub-h">Problems with stops</h2>
             <p class="dim small">Drivers at a stop said it is another chain, or that there is no truck stop. Approve fixes the stop (new chain, or off the map); Reject leaves it as it was. Two drivers saying "not here" already took it off the map until you decide.</p>
             <div id="issueList"></div>
@@ -302,6 +319,8 @@
             <h2 class="sub-h">Chains not in the app</h2>
             <p class="dim small">Truck stops of other chains drivers told us about (typed in by them). Nothing was added to the map: the app has no credits for these chains.</p>
             <div id="otherChains"></div>
+          </div>
+          <div>
             <h2 class="sub-h">Add a truck stop</h2>
             <p class="dim small">Paste the coordinates from Google Maps (right-click the building with the showers, click the numbers to copy them), or a Google Maps link. It goes on the map at once.</p>
             <form id="addStop" class="addStop">
@@ -321,18 +340,6 @@
             <form id="stopSearch" class="stopSearch"><input id="stopQ" placeholder="Tonkawa, I-35 214, an address, 36.69, -97.34" autocomplete="off"><button class="small">Search</button></form>
             <div id="stopFound"></div>
             <p class="msg" id="stopFoundMsg"></p>
-          </div>
-          <div>
-            <div id="map"></div>
-            <div class="mapTools" id="mapTools" hidden>
-              <span class="hint" id="mapHint">Drag the pin onto the building with the showers, then save.</span>
-              <button class="primary" id="savePoint">Save point</button>
-              <button id="approveStop">✅ Approve</button>
-              <button class="danger" id="rejectStop">❌ Reject</button>
-              <label class="showersBox" id="reportShowersBox" hidden><input type="checkbox" id="reportShowers"> <span id="reportShowersText">Has showers</span></label>
-              <a id="gmaps" target="_blank" rel="noopener">Open in Google Maps (satellite)</a>
-            </div>
-            <p class="msg" id="stopMsg"></p>
           </div>
         </div>
       </div>
