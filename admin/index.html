@@ -11,7 +11,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://nominatim.openstreetmap.org https://*.supabase.co wss://*.supabase.co http://127.0.0.1:54321 ws://127.0.0.1:54321 http://localhost:54321 ws://localhost:54321; img-src 'self' data: blob: https://*.supabase.co https://tile.openstreetmap.org https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src https://fonts.gstatic.com; base-uri 'self'; form-action 'self'; object-src 'none'">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Sans+Extra+Condensed:wght@700&family=IBM+Plex+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb" crossorigin="anonymous">
   <link rel="stylesheet" href="../style.css">
   <style>
@@ -22,7 +22,7 @@
       font: inherit; font-size: 15px; font-weight: 500; cursor: pointer; border-radius: 10px;
       border: 1px solid var(--steel-dark); background: transparent; color: var(--text); padding: 9px 14px; white-space: nowrap;
     }
-    @media (max-width: 560px) { #whoEmail { display: none; } .tile b { font-size: 26px; } }
+    @media (max-width: 560px) { #whoEmail { display: none; } }
     button.primary { background: var(--steel); color: var(--ink); border-color: var(--steel); font-weight: 700; }
     button.danger { border-color: #e0524f; color: #f08a88; }
     button.small { padding: 5px 10px; font-size: 14px; }
@@ -58,13 +58,70 @@
     .bar .spacer { flex: 1; }
     .bar input { max-width: 300px; padding: 9px 12px; }
 
-    .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin: 14px 0 8px; }
-    .tile { background: var(--surface2); border-radius: 14px; padding: 14px 16px; }
-    .tile b { display: block; font-size: 30px; line-height: 1.1; }
-    .tile span { color: var(--dim); font-size: 14px; }
-    .tile small { display: block; color: var(--dim); font-size: 13px; margin-top: 4px; }
-    .tile.now b { color: var(--accent); }
-    .tile.text b { font-size: 18px; line-height: 1.35; padding: 6px 0 4px; }
+    /* Dashboard. The one bold thing is the "right now" board, the truck stop sign's price board from the
+       site: big condensed digits that light up green only while something is happening. All else is quiet. */
+    .dash { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 18px 28px; margin: 14px 0 6px;
+            grid-template-areas: "now needs" "chart facts"; }
+    .dash > * { min-width: 0; }
+    .nowBoard { grid-area: now; display: flex; gap: 10px; background: #050809; border-radius: 14px; padding: 10px;
+                box-shadow: 0 0 0 1px #2c3638; }
+    .nowCell { flex: 1; display: flex; align-items: center; gap: 16px; padding: 10px 18px; border-radius: 8px; background: #0b1011;
+               color: var(--dim); text-decoration: none; }
+    .nowCell i { width: 11px; height: 11px; border-radius: 50%; background: #2c3638; flex: none; }
+    .nowCell b { font-family: "Fira Sans Extra Condensed", "IBM Plex Sans", sans-serif; font-weight: 700; font-size: 64px; line-height: 1;
+                 color: #2f3a3c; font-variant-numeric: tabular-nums; min-width: 1ch; }
+    .nowCell span { font-size: 15px; line-height: 1.3; }
+    .nowCell.lit i { background: var(--accent); box-shadow: 0 0 10px 2px rgba(79, 191, 106, .5); }
+    .nowCell.lit b { color: #6fe08a; text-shadow: 0 0 16px rgba(79, 191, 106, .45); }
+    .nowCell.lit span { color: var(--text); }
+    .needs { grid-area: needs; align-self: stretch; display: flex; flex-direction: column; justify-content: center; }
+    .needs h2, .chartBox h2, .facts h2 { font-size: 17px; margin: 0 0 6px; }
+    .needs a { display: flex; align-items: baseline; gap: 12px; padding: 6px 0; border-top: 1px solid #2c3638; color: var(--dim); text-decoration: none; }
+    .needs a:first-of-type { border-top: 0; }
+    .needs a b { min-width: 2ch; text-align: right; font-size: 20px; font-variant-numeric: tabular-nums; color: #4a5658; }
+    .needs a.due { color: var(--text); }
+    .needs a.due b { color: var(--amber); }
+    .needs a.due:hover span { text-decoration: underline; text-underline-offset: 3px; }
+    .needs p { margin: 4px 0 0; color: var(--dim); font-size: 14px; }
+    /* The chart: stacked bars per day, success at the base. Colors checked for color-blind readers. */
+    .chartBox { grid-area: chart; --ok: #199e70; --bad: #d95926; --none: #9085e9; }
+    .legend { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 14px; color: var(--dim); margin-bottom: 12px; }
+    .legend span { display: inline-flex; align-items: center; gap: 7px; }
+    .legend i { width: 10px; height: 10px; border-radius: 3px; }
+    .legend b { color: var(--text); font-variant-numeric: tabular-nums; }
+    .bars { position: relative; display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 6px; height: 180px;
+            border-bottom: 1px solid #3a4548; padding-top: 18px; }
+    .bars .top { position: absolute; left: 0; right: 0; top: 18px; border-top: 1px dashed #2c3638; pointer-events: none; }
+    .bars .top em { position: absolute; right: 0; top: -18px; font-style: normal; font-size: 12px; color: var(--dim); }
+    .day { position: relative; display: flex; flex-direction: column-reverse; gap: 2px; align-items: center; outline: none; }
+    .day .seg { width: min(28px, 100%); }
+    .day .seg:last-of-type { border-radius: 4px 4px 0 0; }
+    .day .ok { background: var(--ok); } .day .bad { background: var(--bad); } .day .none { background: var(--none); }
+    .day .tip { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 2;
+                background: var(--steel); color: var(--ink); border-radius: 8px; padding: 7px 10px; font-size: 13px; line-height: 1.45; white-space: nowrap;
+                box-shadow: 0 8px 20px -8px rgba(0, 0, 0, .6); }
+    .day:first-child .tip, .day:nth-child(2) .tip { left: 0; transform: none; }
+    .day:last-child .tip, .day:nth-last-child(2) .tip { left: auto; right: 0; transform: none; }
+    .day:hover .tip, .day:focus .tip { display: block; }
+    .day:hover::before, .day:focus::before { content: ""; position: absolute; inset: 0 -3px; background: rgba(201, 206, 209, .06); border-radius: 6px; }
+    .days { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 6px; margin-top: 6px; font-size: 12px; color: var(--dim); text-align: center; }
+    .days .today { color: var(--text); font-weight: 500; }
+    .facts { grid-area: facts; }
+    .facts dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 0 14px; }
+    .facts dt { color: var(--dim); font-size: 14px; padding: 7px 0; border-top: 1px solid #2c3638; }
+    .facts dd { margin: 0; padding: 6px 0; border-top: 1px solid #2c3638; }
+    .facts dt:first-of-type, .facts dd:first-of-type { border-top: 0; }
+    .facts dd small { color: var(--dim); font-size: 14px; }
+    .liveLists { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 28px; }
+    @media (max-width: 1000px) {
+      .dash { grid-template-columns: minmax(0, 1fr); grid-template-areas: "now" "needs" "chart" "facts"; }
+      .liveLists { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 560px) {
+      .nowBoard { flex-direction: column; }
+      .nowCell b { font-size: 48px; }
+      .bars { gap: 3px; } .days { gap: 3px; font-size: 11px; }
+    }
 
     section { margin: 30px 0 10px; }
     section h2 { font-size: 19px; margin: 0 0 10px; display: flex; gap: 10px; align-items: baseline; }
@@ -153,8 +210,6 @@
       #exList th:nth-child(3), #exList td:nth-child(3), #exList th:nth-child(7), #exList td:nth-child(7),
       #reportList th:nth-child(7), #reportList td:nth-child(7),
       #stopList th:nth-child(5), #stopList td:nth-child(5) { display: none; }
-      .tiles { grid-template-columns: repeat(2, 1fr); }
-      .tile b { font-size: 24px; }
       .drawer { padding: 18px 16px 40px; }
       .kv { grid-template-columns: 1fr; gap: 2px 0; }
       .kv div:nth-child(odd) { margin-top: 8px; font-size: 13px; }
@@ -249,9 +304,16 @@
           <span class="spacer"></span>
           <button id="refresh">Refresh</button>
         </div>
-        <div class="tiles" id="tiles"></div>
-        <section><h2>Open exchanges <em id="openCount"></em></h2><div id="openList"></div></section>
-        <section><h2>Donors on shift <em id="shiftCount"></em></h2><div id="shiftList"></div></section>
+        <div class="dash" id="dash">
+          <div class="nowBoard" id="nowBoard"></div>
+          <div class="needs" id="needs"></div>
+          <div class="chartBox" id="chartBox"></div>
+          <div class="facts" id="facts"></div>
+        </div>
+        <div class="liveLists">
+          <section><h2>Open exchanges <em id="openCount"></em></h2><div id="openList"></div></section>
+          <section><h2>Donors on shift <em id="shiftCount"></em></h2><div id="shiftList"></div></section>
+        </div>
         <section><h2>Recently closed</h2><div id="closedList"></div></section>
       </div>
 
@@ -406,6 +468,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous"></script>
-  <script src="app.js?v=20261016n"></script>
+  <script src="app.js?v=20261016o"></script>
 </body>
 </html>

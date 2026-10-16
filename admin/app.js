@@ -179,18 +179,57 @@
       const { data: o, error } = await sb.rpc('admin_overview');
       if (error) return;
       const today = o.exchanges_today || {}, week = o.exchanges_week || {};
-      const methods = Object.entries(o.users_by_method || {}).map(([k, v]) => `${v} ${k}`).join(' · ');
-      const tile = (n, label, small, cls = '') => `<div class="tile ${cls}"><b>${esc(n)}</b><span>${label}</span>${small ? `<small>${esc(small)}</small>` : ''}</div>`;
-      $('tiles').innerHTML = [
-        tile(o.open_exchanges, 'open exchanges', '', 'now'),
-        tile(o.donors_on_shift, 'donors on shift', '', 'now'),
-        tile(o.users_total, 'users', `+${o.users_today} today · +${o.users_week} this week`),
-        tile(methods || '-', 'sign-in methods', '', 'text'),
-        tile(today.success ?? 0, 'showers today', `${today.failed ?? 0} failed · ${today.no_donor ?? 0} no donor · ${today.cancelled ?? 0} cancelled`),
-        tile(week.success ?? 0, 'showers this week', `${week.failed ?? 0} failed · ${week.no_donor ?? 0} no donor`),
-        tile(o.reports_open, 'open reports'),
-        tile(o.in_cooldown, 'in cooldown', `${o.flagged} flagged`),
-      ].join('');
+      const n = (v) => Number(v) || 0;
+      const plural = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+
+      // Right now: a cell lights up only while something is happening.
+      const cell = (k, one, many) => `<div class="nowCell${n(k) ? ' lit' : ''}"><i></i><b>${n(k)}</b><span>${n(k) === 1 ? one : many}</span></div>`;
+      $('nowBoard').innerHTML = cell(o.open_exchanges, 'open exchange', 'open exchanges')
+        + cell(o.donors_on_shift, 'donor on shift', 'donors on shift');
+
+      // Needs you: what waits for a decision, each with the tab where it's decided.
+      const need = (k, label, href) => `<a class="${n(k) ? 'due' : ''}" href="${href}"><b>${n(k)}</b><span>${label}</span></a>`;
+      const waiting = n(o.reports_open) + n(o.stops_pending) + n(o.issues_pending);
+      $('needs').innerHTML = `<h2>Needs you</h2>
+        ${need(o.reports_open, 'open reports', '#reports')}
+        ${need(o.stops_pending, 'new stops to check', '#stops')}
+        ${need(o.issues_pending, 'problems with stops', '#stops')}
+        ${waiting ? '' : '<p>Nothing waiting.</p>'}`;
+
+      // Showers, last 14 days: one stacked bar a day (success at the base), a tooltip per day.
+      const days = o.days || [];
+      const total = (d) => n(d.success) + n(d.failed) + n(d.no_donor);
+      const max = Math.max(1, ...days.map(total));
+      const sum = (k) => days.reduce((t, d) => t + n(d[k]), 0);
+      const fmt = (iso, opts) => new Date(iso + 'T12:00:00').toLocaleDateString('en-US', opts);
+      const seg = (cls, v) => v ? `<div class="seg ${cls}" style="height:${(v / max) * 100}%"></div>` : '';
+      const bars = days.map((d) => {
+        const tip = `<b>${fmt(d.day, { weekday: 'short', month: 'short', day: 'numeric' })}</b><br>${plural(n(d.success), 'shower', 'showers')}`
+          + `${n(d.failed) ? `, ${n(d.failed)} failed` : ''}${n(d.no_donor) ? `, ${n(d.no_donor)} no donor` : ''}`
+          + `${n(d.cancelled) ? `<br>${n(d.cancelled)} cancelled by the receiver` : ''}`;
+        const label = tip.replace(/<br>/g, '. ').replace(/<[^>]+>/g, '');
+        return `<div class="day" tabindex="0" aria-label="${esc(label)}">${seg('ok', n(d.success))}${seg('bad', n(d.failed))}${seg('none', n(d.no_donor))}<div class="tip">${tip}</div></div>`;
+      }).join('');
+      const labels = days.map((d, i) => i === days.length - 1 ? '<span class="today">today</span>'
+        : `<span>${i === 0 || d.day.endsWith('-01') ? fmt(d.day, { month: 'short', day: 'numeric' }) : Number(d.day.slice(8))}</span>`).join('');
+      $('chartBox').innerHTML = `<h2>Showers, last 14 days</h2>
+        <div class="legend">
+          <span><i style="background:var(--ok)"></i>Got a shower <b>${sum('success')}</b></span>
+          <span><i style="background:var(--bad)"></i>Code failed <b>${sum('failed')}</b></span>
+          <span><i style="background:var(--none)"></i>No donor came <b>${sum('no_donor')}</b></span>
+        </div>
+        <div class="bars"><div class="top"><em>${max}</em></div>${bars}</div>
+        <div class="days">${labels}</div>`;
+
+      // The rest, quiet.
+      const methods = Object.entries(o.users_by_method || {}).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${v} ${k === 'email' ? 'email' : k[0].toUpperCase() + k.slice(1)}`).join(', ');
+      $('facts').innerHTML = `<h2>This week</h2><dl>
+        <dt>Today</dt><dd>${plural(n(today.success), 'shower', 'showers')}${n(today.failed) ? `, <small>${n(today.failed)} failed</small>` : ''}${n(today.no_donor) ? `, <small>${n(today.no_donor)} no donor</small>` : ''}</dd>
+        <dt>7 days</dt><dd>${plural(n(week.success), 'shower', 'showers')}${n(week.failed) ? `, <small>${n(week.failed)} failed</small>` : ''}${n(week.no_donor) ? `, <small>${n(week.no_donor)} no donor</small>` : ''}</dd>
+        <dt>Drivers</dt><dd>${n(o.users_total)} <small>+${n(o.users_today)} today, +${n(o.users_week)} this week</small></dd>
+        <dt>Sign-in</dt><dd><small>${esc(methods || '-')}</small></dd>
+        <dt>On hold</dt><dd>${n(o.in_cooldown) || n(o.flagged) ? `${n(o.in_cooldown)} in cooldown, ${n(o.flagged)} flagged` : '<small>nobody</small>'}</dd>
+      </dl>`;
     }
 
     async function loadLive() {
