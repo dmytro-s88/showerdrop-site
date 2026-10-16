@@ -8,7 +8,7 @@
   <link rel="icon" href="../favicon.png">
   <!-- Scripts only from this site and the two pinned CDNs; data only to Supabase (and the local
        copy while developing); no frames. XSS through a crafted nickname or report has nowhere to go. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co http://127.0.0.1:54321 ws://127.0.0.1:54321 http://localhost:54321 ws://localhost:54321; img-src 'self' data: blob: https://*.supabase.co https://tile.openstreetmap.org https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src https://fonts.gstatic.com; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://nominatim.openstreetmap.org https://*.supabase.co wss://*.supabase.co http://127.0.0.1:54321 ws://127.0.0.1:54321 http://localhost:54321 ws://localhost:54321; img-src 'self' data: blob: https://*.supabase.co https://tile.openstreetmap.org https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src https://fonts.gstatic.com; base-uri 'self'; form-action 'self'; object-src 'none'">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -179,6 +179,8 @@
       .foundInfo { flex: 1; min-width: 0; }
       .showersBox { white-space: nowrap; font-size: 14px; display: flex; align-items: center; gap: 6px; }
       .showersBox input { width: 20px; height: 20px; }
+      .foundActions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+      .foundRow.offMap .foundInfo { opacity: 0.6; }
   </style>
 </head>
 <body>
@@ -308,8 +310,8 @@
             </form>
             <p class="msg" id="addStopMsg"></p>
             <h2 class="sub-h">Find a truck stop</h2>
-            <p class="dim small">Any stop on the map, by ID, town, state, interstate, exit or chain. "Has showers" off: drivers see "no showers here", requests and shifts there are refused.</p>
-            <form id="stopSearch" class="stopSearch"><input id="stopQ" placeholder="e.g. Tonkawa, I-35 exit 214, 406" autocomplete="off"><button class="small">Search</button></form>
+            <p class="dim small">By ID, town, state, interstate, exit or chain - or an address, coordinates or a Google Maps link (then the stops within 5 km). "Has showers" off: drivers see "no showers here". "Remove from map": not a truck stop at all; it can be put back.</p>
+            <form id="stopSearch" class="stopSearch"><input id="stopQ" placeholder="Tonkawa, I-35 214, an address, 36.69, -97.34" autocomplete="off"><button class="small">Search</button></form>
             <div id="stopFound"></div>
             <p class="msg" id="stopFoundMsg"></p>
           </div>
@@ -390,6 +392,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous"></script>
-  <script src="app.js?v=20261016l"></script>
+  <script src="app.js?v=20261016m"></script>
 </body>
 </html>

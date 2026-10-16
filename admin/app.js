@@ -466,20 +466,60 @@
 
     // ---- any stop: search, and the "Has showers" switch ----
     let stopQuery = '';
+    // An address (or a place name) -> coordinates, from OpenStreetMap's geocoder.
+    async function geocode(q) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=${encodeURIComponent(q)}`);
+        const [hit] = await res.json();
+        return hit ? { lat: Number(hit.lat), lng: Number(hit.lon), label: hit.display_name } : null;
+      } catch { return null; }
+    }
+    // Text first (ID, town, state, interstate, exit, chain); coordinates, a Maps link or an address
+    // (when the text finds nothing) list the stops within 5 km of that point, closest first.
     async function searchStops() {
       if (!stopQuery) return $('stopFound').innerHTML = '';
-      const { data, error } = await sb.rpc('admin_stop_search', { p_q: stopQuery });
-      if (error) return $('stopFoundMsg').textContent = error.message;
+      $('stopFound').innerHTML = '<p class="dim">Searching…</p>';
+      let data = null, around = null, label = '';
+      const c = parseCoords(stopQuery);
+      if (c) around = c;
+      else {
+        const { data: found, error } = await sb.rpc('admin_stop_search', { p_q: stopQuery });
+        if (error) return $('stopFoundMsg').textContent = error.message;
+        data = found;
+        if (!data.length) {
+          const g = await geocode(stopQuery);
+          if (g) { around = g; label = g.label; }
+        }
+      }
+      if (around) {
+        const { data: near, error } = await sb.rpc('admin_stops_near', { p_lat: around.lat, p_lng: around.lng, p_km: 5 });
+        if (error) return $('stopFoundMsg').textContent = error.message;
+        data = near;
+      }
       const where = (x) => [x.interstate && `${esc(x.interstate)}${x.exit ? ' exit ' + esc(x.exit) : ''}`, [x.city, x.state].filter(Boolean).map(esc).join(', ')].filter(Boolean).join(', ');
-      // A list, not a table: on a phone the switch must stay on screen next to the name.
-      $('stopFound').innerHTML = data.length ? `<div class="found">${data.map((x) => `<div class="foundRow">
+      const far = (m) => m < 1000 ? `${m} m away` : `${(m / 1609.34).toFixed(1)} mi away`;
+      const head = around ? `<p class="dim small">Within 5 km of ${label ? esc(label) : `${around.lat.toFixed(5)}, ${around.lng.toFixed(5)}`}:</p>` : '';
+      // A list, not a table: on a phone the switches must stay on screen next to the name.
+      $('stopFound').innerHTML = head + (data.length ? `<div class="found">${data.map((x) => `<div class="foundRow${x.is_active ? '' : ' offMap'}">
           <div class="foundInfo"><b>${esc(x.chain)}</b> <span class="dim">#${x.id}</span>${x.is_active ? '' : ' <span class="dim">· off the map</span>'}
-            <div class="dim small">${where(x) || '-'} · <a href="https://www.google.com/maps?q=${x.lat},${x.lng}&t=k" target="_blank" rel="noopener">satellite</a></div></div>
-          <label class="showersBox"><input type="checkbox" data-showers="${x.id}" ${x.has_showers ? 'checked' : ''}> ${x.has_showers ? 'Has showers' : '<b>No showers</b>'}</label>
+            <div class="dim small">${where(x) || '-'}${x.distance_m != null ? ` · ${far(x.distance_m)}` : ''} · <a href="https://www.google.com/maps?q=${x.lat},${x.lng}&t=k" target="_blank" rel="noopener">satellite</a></div></div>
+          <div class="foundActions">
+            <label class="showersBox"><input type="checkbox" data-showers="${x.id}" ${x.has_showers ? 'checked' : ''}> ${x.has_showers ? 'Has showers' : '<b>No showers</b>'}</label>
+            ${x.is_active ? `<button class="small danger" data-active="${x.id}" data-to="0">Remove from map</button>` : `<button class="small" data-active="${x.id}" data-to="1">Put back</button>`}
+          </div>
         </div>`).join('')}</div>`
-        : '<p class="dim">Nothing found.</p>';
+        : `<p class="dim">${around ? 'No truck stops within 5 km.' : 'Nothing found. Try a town, an exit, coordinates or an address.'}</p>`);
     }
     $('stopSearch').onsubmit = (e) => { e.preventDefault(); stopQuery = $('stopQ').value.trim(); $('stopFoundMsg').textContent = ''; searchStops(); };
+    $('stopFound').addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-active]');
+      if (!b) return;
+      const on = b.dataset.to === '1';
+      if (!on && !confirm('Take this truck stop off the map? Drivers stop seeing it and any shifts there end. You can put it back later.')) return;
+      const { error } = await sb.rpc('admin_stop_set_active', { p_id: Number(b.dataset.active), p_active: on });
+      $('stopFoundMsg').textContent = error ? error.message : on ? 'Back on the map.' : 'Taken off the map.';
+      searchStops();
+    });
     $('stopFound').addEventListener('change', async (e) => {
       const box = e.target.closest('[data-showers]');
       if (!box) return;
