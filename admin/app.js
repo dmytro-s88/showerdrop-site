@@ -367,7 +367,7 @@
     async function loadIssues() {
       const { data, error } = await sb.rpc('admin_stop_issues');
       if (error) return $('issueMsg').textContent = error.message;
-      const what = (x) => x.kind === 'not_here' ? 'No truck stop here'
+      const what = (x) => x.kind === 'not_here' ? 'No truck stop here' : x.kind === 'no_showers' ? 'No showers here'
         : `Really ${x.new_chain ? esc(x.new_chain) : x.other_chain ? `${esc(x.other_chain)} (not in the app)` : 'a chain not in the app'}`;
       const where = (x) => [x.interstate && `${esc(x.interstate)}${x.exit ? ' exit ' + esc(x.exit) : ''}`, [x.city, x.state].filter(Boolean).map(esc).join(', ')].filter(Boolean).join(', ');
       $('issueList').innerHTML = data.length ? table(['', 'Stop', 'Problem', 'From', 'When', ''],
@@ -380,6 +380,30 @@
         : '<p class="dim">Nothing reported yet.</p>';
       loadOtherChains();
     }
+    // ---- any stop: search, and the "Has showers" switch ----
+    let stopQuery = '';
+    async function searchStops() {
+      if (!stopQuery) return $('stopFound').innerHTML = '';
+      const { data, error } = await sb.rpc('admin_stop_search', { p_q: stopQuery });
+      if (error) return $('stopFoundMsg').textContent = error.message;
+      const where = (x) => [x.interstate && `${esc(x.interstate)}${x.exit ? ' exit ' + esc(x.exit) : ''}`, [x.city, x.state].filter(Boolean).map(esc).join(', ')].filter(Boolean).join(', ');
+      $('stopFound').innerHTML = data.length ? table(['Stop', 'Where', 'Has showers'],
+        data.map((x) => `<tr><td>${esc(x.chain)}${x.number ? ' #' + esc(x.number) : ''} <span class="dim">#${x.id}</span>${x.is_active ? '' : ' <span class="dim">· off the map</span>'}</td>
+          <td>${where(x) || '-'} <a href="https://www.google.com/maps?q=${x.lat},${x.lng}&t=k" target="_blank" rel="noopener">satellite</a></td>
+          <td><label><input type="checkbox" data-showers="${x.id}" ${x.has_showers ? 'checked' : ''}> ${x.has_showers ? 'yes' : '<b>no</b>'}</label></td></tr>`))
+        : '<p class="dim">Nothing found.</p>';
+    }
+    $('stopSearch').onsubmit = (e) => { e.preventDefault(); stopQuery = $('stopQ').value.trim(); $('stopFoundMsg').textContent = ''; searchStops(); };
+    $('stopFound').addEventListener('change', async (e) => {
+      const box = e.target.closest('[data-showers]');
+      if (!box) return;
+      const has = box.checked;
+      if (!has && !confirm('Mark this stop as having no showers? Drivers there are signed off sharing, and requests are refused.')) { box.checked = true; return; }
+      const { error } = await sb.rpc('admin_stop_set_showers', { p_id: Number(box.dataset.showers), p_has: has });
+      $('stopFoundMsg').textContent = error ? error.message : has ? 'Showers on: the stop works as usual.' : 'Marked: no showers at this stop.';
+      searchStops();
+    });
+
     async function loadOtherChains() {
       const { data, error } = await sb.rpc('admin_other_chains');
       if (error) return;
@@ -392,7 +416,7 @@
       const b = e.target.closest('[data-issue]');
       if (!b) return;
       const approve = b.dataset.approve === '1';
-      if (approve && !confirm('Fix this stop as the driver said? (A new chain, or the stop goes off the map.)')) return;
+      if (approve && !confirm('Apply what the driver reported? (A new chain, the stop off the map, or marked as having no showers.)')) return;
       const { data, error } = await sb.rpc('admin_stop_issue_decide', { p_id: Number(b.dataset.issue), p_approve: approve });
       await loadIssues();
       $('issueMsg').textContent = error ? error.message : data === 'approved' ? 'Done: the stop is fixed.' : data === 'rejected' ? 'Rejected: the stop stays as it was.' : `Result: ${data}`;
