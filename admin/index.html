@@ -210,6 +210,10 @@
       #exList th:nth-child(3), #exList td:nth-child(3), #exList th:nth-child(7), #exList td:nth-child(7),
       #reportList th:nth-child(7), #reportList td:nth-child(7),
       #stopList th:nth-child(5), #stopList td:nth-child(5) { display: none; }
+      /* Driver-added stops: the status as a colored dot (the word stays for screen readers and on hover). */
+      #stopList .pill { display: inline-block; width: 12px; height: 12px; padding: 0; font-size: 0; vertical-align: middle; }
+      #stopList td:first-child { padding-right: 0; }
+      #stopList .hm { display: none; }
       .drawer { padding: 18px 16px 40px; }
       .kv { grid-template-columns: 1fr; gap: 2px 0; }
       .kv div:nth-child(odd) { margin-top: 8px; font-size: 13px; }
@@ -224,7 +228,7 @@
       .stopSearch { display: flex; gap: 8px; margin-bottom: 10px; }
       .addStop { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
       .addStop #addCoords, .addStop button, .addStop select { grid-column: 1 / -1; }
-      .addStop input, .addStop select { min-width: 0; }
+      .addStop input, .addStop select { min-width: 0; width: 100%; max-width: none; }
       .passMap { height: 260px; border-radius: 12px; margin: 6px 0 10px; }
       .clickable { cursor: pointer; }
       .foundRow.picked { background: #34403f; }
@@ -468,6 +472,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous"></script>
-  <script src="app.js?v=20261016o"></script>
+  <script src="app.js?v=20261016p"></script>
 </body>
 </html>

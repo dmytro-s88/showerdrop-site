@@ -24,10 +24,12 @@
       return m <= 0 ? 'expiring' : `${m} min left`;
     };
     const time = (t) => t ? new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+    // The date, with the time of day in a span that phones hide where a table is tight.
+    const dayTime = (t) => t ? `${new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric' })}<span class="hm">, ${new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>` : '-';
     const label = { searching: 'searching', accepted: 'accepted', queued: 'in line', code_sent: 'code sent',
       retry_needed: 'retry needed', success: 'success', failed: 'failed', no_donor: 'no donor', cancelled: 'cancelled',
       pending: 'pending', approved: 'approved', rejected: 'rejected' };
-    const pill = (s) => `<span class="pill ${esc(s)}">${esc(label[s] ?? s)}</span>`;
+    const pill = (s) => `<span class="pill ${esc(s)}" title="${esc(label[s] ?? s)}">${esc(label[s] ?? s)}</span>`;
     const table = (head, rows) => rows.length
       ? `<div class="table"><table><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`
       : '<div class="empty">Nothing yet.</div>';
@@ -414,7 +416,7 @@
       if (error) return;
       stopRows = data;
       $('stopList').innerHTML = table(['', 'Chain', 'From', 'When', 'Decided'],
-        data.map((s) => `<tr data-stop="${s.id}" class="${current?.id === s.id ? 'selected' : ''}"><td>${pill(s.status)}</td><td>${esc(s.chain)} <span class="dim">#${s.id}</span></td><td>${userLink(s.reporter_id, s.reporter)}</td><td class="dim">${time(s.created_at)}</td><td class="dim">${s.decided_at ? time(s.decided_at) : ''}</td></tr>`));
+        data.map((s) => `<tr data-stop="${s.id}" class="${current?.id === s.id ? 'selected' : ''}"><td>${pill(s.status)}</td><td>${esc(s.chain)} <span class="dim">#${s.id}</span></td><td>${userLink(s.reporter_id, s.reporter)}</td><td class="dim">${dayTime(s.created_at)}</td><td class="dim">${s.decided_at ? time(s.decided_at) : ''}</td></tr>`));
       if (!map) {
         // No wheel zoom: scrolling the page over the map must not zoom it (pinch and +/- still do).
         map = L.map('map', { zoomControl: true, scrollWheelZoom: false }).setView([39.5, -98.35], 4);
