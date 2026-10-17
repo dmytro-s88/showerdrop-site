@@ -175,6 +175,27 @@ header nav a:hover, header nav a[aria-current="page"] { color: var(--text); }
   .phone { width: 220px; }
 }
 
+/* Where it works: the US with a dot per truck stop. Chain colors checked for color-blind readers. */
+.where { padding: 48px 0; border-top: 1px solid var(--surface2); --c0: #3987e5; --c1: #d95926; --c2: #199e70; }
+.where-sub { color: var(--dim); max-width: 60ch; margin: -14px 0 16px; }
+.where-chains { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 15px; color: var(--dim); min-height: 24px; }
+.where-chains span { display: inline-flex; align-items: center; gap: 7px; }
+.where-chains b { color: var(--text); font-variant-numeric: tabular-nums; }
+.where-chains i { width: 11px; height: 11px; border-radius: 50%; }
+.where-chains .c0, .where-map .c0 { background: var(--c0); fill: var(--c0); }
+.where-chains .c1, .where-map .c1 { background: var(--c1); fill: var(--c1); }
+.where-chains .c2, .where-map .c2 { background: var(--c2); fill: var(--c2); }
+.where-map { margin-top: 14px; aspect-ratio: 975 / 610; width: 100%; max-width: 880px; }   /* the whole map and the line under it fit a laptop screen */
+.where-map svg { display: block; width: 100%; height: auto; cursor: pointer; }
+.where-map .land { fill: var(--surface2); }
+.where-map .borders { fill: none; stroke: var(--bg); stroke-width: 1; }
+.where-map circle { stroke: var(--bg); stroke-width: 0.8; }
+.where-map circle.on { r: 7px; stroke: var(--text); stroke-width: 2; }
+.where-pick { margin: 12px 0 0; color: var(--dim); min-height: 1.6em; }
+.where-pick b { color: var(--text); }
+.where-pick a { margin-left: 6px; white-space: nowrap; }
+@media (max-width: 560px) { .where-map circle { r: 4.6px; } }
+
 /* Donors: the same given / received counters as the app header. */
 .donor p { max-width: 62ch; color: #d3d9da; margin: 0 0 14px; }
 .counters { display: inline-flex; align-items: center; margin-top: 10px; padding: 9px 18px; border-radius: 24px; background: var(--surface2); }

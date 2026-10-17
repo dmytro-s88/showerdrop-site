@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Sans+Extra+Condensed:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261010b">
+  <link rel="stylesheet" href="style.css?v=20261017a">
 </head>
 <body class="home-page">
   <header>
@@ -68,6 +68,16 @@
       </ol>
     </section>
 
+    <!-- Where it works: every truck stop in the app, drawn by scripts/site-map/build.mjs into stops-map.svg
+         (loaded when the section comes near). Tap a dot: the stop and a link to directions. -->
+    <section class="where" aria-labelledby="where-h">
+      <h2 id="where-h">Works at 1,616 truck stops</h2>
+      <p class="where-sub" id="where-sub">Every Love's, Pilot Flying J and TA Petro travel center we know of, in 45 states.</p>
+      <div class="where-chains" id="where-chains" aria-hidden="true"></div>
+      <div class="where-map" id="where-map" role="img" aria-labelledby="where-h"></div>
+      <p class="where-pick" id="where-pick" aria-live="polite" data-i18n="where.pick">Tap a dot to see the truck stop.</p>
+    </section>
+
     <!-- Two phones filmed at the same moment: the receiver (Android) and the donor (iPhone). The two videos
          are kept in step by the script at the bottom. -->
     <section class="live" aria-labelledby="live-h">
@@ -112,7 +122,7 @@
     <p data-i18n="footer.disclaimer">ShowerDrop is not affiliated with Pilot Flying J, Love's, TravelCenters of America or any loyalty program. Truck stop data © OpenStreetMap contributors.</p>
   </footer>
 
-  <script src="i18n.js?v=20261010b"></script>
+  <script src="i18n.js?v=20261017a"></script>
   <script>
     // "See it in action": both phones play together while on screen, and restart together, so the code
     // the donor sends lands on the receiver's phone at the same moment. Reduced motion: controls instead.
@@ -132,6 +142,58 @@
         if (visible) { videos.forEach((v) => { v.preload = 'auto'; }); playBoth(); }
         else videos.forEach((v) => v.pause());
       }, { threshold: 0.35 }).observe(document.querySelector('.live'));
+    })();
+  </script>
+  <script>
+    // "Works at N truck stops": the numbers come with the map, so they always match its dots.
+    (function () {
+      const box = document.getElementById('where-map');
+      if (!box) return;
+      const CHAINS = ['Pilot Flying J', "Love's", 'TA Petro'];
+      let svg = null, picked = null;
+      const n = (v) => Number(v).toLocaleString(siteI18n.lang);
+      const texts = () => {
+        if (!svg) return;
+        const total = svg.dataset.total, states = svg.dataset.states, per = svg.dataset.chains.split(',');
+        document.getElementById('where-h').textContent = siteI18n.t('where.h', { n: n(total) });
+        document.getElementById('where-sub').textContent = siteI18n.t('where.sub', { s: states });
+        document.getElementById('where-chains').innerHTML = CHAINS.map((c, i) => `<span><i class="c${i}"></i><b>${n(per[i])}</b> ${c}</span>`).join('');
+        if (picked) show(picked);
+      };
+      // The dots are small on a phone: a tap picks the nearest one within reach.
+      const show = (dot) => {
+        picked = dot;
+        svg.querySelectorAll('circle.on').forEach((c) => c.classList.remove('on'));
+        dot.classList.add('on');
+        dot.parentNode.appendChild(dot);
+        const [chain, road, place, ll] = dot.dataset.t.split('|');
+        const pick = document.getElementById('where-pick');
+        pick.innerHTML = `<b></b> <span></span> <a target="_blank" rel="noopener"></a>`;
+        pick.querySelector('b').textContent = chain;
+        pick.querySelector('span').textContent = [road, place].filter(Boolean).join(', ');
+        const a = pick.querySelector('a');
+        a.href = `https://www.google.com/maps/dir/?api=1&destination=${ll}`;
+        a.textContent = siteI18n.t('where.directions');
+      };
+      const onTap = (e) => {
+        const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+        const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+        const reach = 22 * (975 / svg.getBoundingClientRect().width);
+        let best = null, bd = reach * reach;
+        for (const c of svg.querySelectorAll('.stops circle')) {
+          const dx = c.cx.baseVal.value - p.x, dy = c.cy.baseVal.value - p.y, d = dx * dx + dy * dy;
+          if (d < bd) { bd = d; best = c; }
+        }
+        if (best) show(best);
+      };
+      const load = () => fetch('stops-map.svg?v=20261017').then((r) => r.ok ? r.text() : Promise.reject(r.status)).then((t) => {
+        box.innerHTML = t;
+        svg = box.querySelector('svg');
+        svg.addEventListener('click', onTap);
+        texts();
+      }).catch(() => { box.hidden = true; });
+      document.addEventListener('langchange', texts);
+      new IntersectionObserver(([e], o) => { if (e.isIntersecting) { o.disconnect(); load(); } }, { rootMargin: '600px' }).observe(box);
     })();
   </script>
   <script>
