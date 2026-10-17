@@ -301,7 +301,7 @@
         <div class="kv">
           <div>Email</div><div>${esc(u.email)}</div>
           <div>Name</div><div>${u.name ? `${esc(u.name)} <span class="dim">(from Google)</span>` : '<span class="dim">- (signed in by email code)</span>'}</div>
-          <div>Joined</div><div>${time(u.created_at)} · last seen ${ago(u.last_sign_in_at)}</div>
+          <div>Joined</div><div>${time(u.created_at)} · last seen ${ago(u.last_seen_at ?? u.last_sign_in_at)}${u.platform ? ` · ${u.platform === 'ios' ? 'iPhone' : u.platform === 'android' ? 'Android' : 'Web'}${u.app_build ? ' ' + u.app_build : ''}` : ''}</div>
           <div>Chains</div><div>${esc(u.chains || '-')}</div>
           <div>Language</div><div>${esc(u.language)}${u.has_push ? '' : ' · no push token'}</div>
           <div>Given</div><div><b>${u.given_real + u.given_adj}</b> = ${u.given_real} real ${u.given_adj >= 0 ? '+' : '−'} ${Math.abs(u.given_adj)} adjusted</div>
