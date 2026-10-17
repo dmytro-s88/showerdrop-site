@@ -23,6 +23,11 @@
       const m = Math.round((new Date(t) - Date.now()) / 60000);
       return m <= 0 ? 'expiring' : `${m} min left`;
     };
+    // US units for people: miles, feet under a tenth of a mile, mph. The database keeps metres and km/h.
+    const M_PER_MI = 1609.34;
+    const dist = (m) => m == null ? '-' : m < M_PER_MI / 10 ? `${Math.round(m * 3.28084 / 10) * 10} ft`
+      : `${(m / M_PER_MI).toFixed(m < 10 * M_PER_MI ? 2 : 1)} mi`;
+    const mph = (kmh) => `${Math.round(kmh * 0.621371)} mph`;
     const time = (t) => t ? new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
     // The date, with the time of day in a span that phones hide where a table is tight.
     const dayTime = (t) => t ? `${new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric' })}<span class="hm">, ${new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>` : '-';
@@ -325,7 +330,7 @@
         <h3>Reports they made</h3>
         ${table(['When', 'Reason', 'Resolved'], u.reports.map((r) => `<tr><td class="dim">${time(r.created_at)}</td><td class="wrap">${esc(r.reason)}</td><td class="dim">${r.resolved ? 'yes' : 'no'}</td></tr>`))}
         ${u.dev_mode ? `<h3>Truck stop passes <span class="dim">(developer mode)</span></h3>
-          <p class="dim small">Tap a pass to see it on the map: <b style="color:#4fbf6a">●</b> the truck stop, <b style="color:#3d8bfd">●</b> where the phone was at its closest. The circle is the 300 m zone.</p>
+          <p class="dim small">Tap a pass to see it on the map: <b style="color:#4fbf6a">●</b> the truck stop, <b style="color:#3d8bfd">●</b> where the phone was at its closest. The circle is the 1,000 ft zone.</p>
           <div id="passMap" class="passMap"></div><div id="passList"><p class="dim">Loading…</p></div>` : ''}
       </div>`;
       if (u.dev_mode) loadPasses(u.id);
@@ -458,7 +463,7 @@
           <div class="foundInfo"><div class="dim small">${time(p.entered_at)}</div>
             <b>${esc(p.chain)}${p.number ? ' #' + esc(p.number) : ''}</b> <span class="dim small">${where(p) || ''}${p.has_showers ? '' : ' · no showers'}</span>
             <div><b style="color:${color}">${v}</b> <span class="dim small">${[sub, p.between_points && 'between fixes'].filter(Boolean).join(' · ')}</span></div>
-            <div class="dim small">closest ${p.min_distance_m ?? '-'} m${p.min_distance_m != null ? ` (${(p.min_distance_m / 1609.34).toFixed(2)} mi)` : ''}${p.speed_kmh != null ? ` · ${p.speed_kmh} km/h` : ''}</div></div>
+            <div class="dim small">closest ${dist(p.min_distance_m)}${p.speed_kmh != null ? ` · ${mph(p.speed_kmh)}` : ''}</div></div>
         </div>`; }).join('')}</div>`
         : '<p class="dim">No passes yet.</p>';
       if (!data.length) return show('passMap', false);
@@ -474,7 +479,7 @@
         if (p.closest_lat != null) {
           const me = [p.closest_lat, p.closest_lng];
           L.polyline([stop, me], { color: '#3d8bfd', weight: 2, dashArray: '4 4' }).addTo(layer);
-          L.circleMarker(me, { radius: 7, color: '#3d8bfd', fillColor: '#3d8bfd', fillOpacity: 1 }).addTo(layer).bindTooltip(`${p.min_distance_m} m`);
+          L.circleMarker(me, { radius: 7, color: '#3d8bfd', fillColor: '#3d8bfd', fillOpacity: 1 }).addTo(layer).bindTooltip(dist(p.min_distance_m));
           map.fitBounds(L.latLngBounds([stop, me]).pad(0.6), { maxZoom: 17 });
         } else map.setView(stop, 16);
         for (const row of $('passList').querySelectorAll('[data-pass]')) row.classList.toggle('picked', Number(row.dataset.pass) === i);
@@ -511,7 +516,7 @@
       });
       if (error) {
         const dup = error.message.match(/^stop_exists:(\d+)/);
-        $('addStopMsg').textContent = dup ? `This chain already has a stop within 500 m (#${dup[1]}). Search for ${dup[1]} below to check it.`
+        $('addStopMsg').textContent = dup ? `This chain already has a stop within 0.3 mi (#${dup[1]}). Search for ${dup[1]} below to check it.`
           : error.message === 'bad_stop' ? 'Check the chain and the coordinates.' : error.message;
         return;
       }
@@ -530,10 +535,10 @@
         return hit ? { lat: Number(hit.lat), lng: Number(hit.lon), label: hit.display_name } : null;
       } catch { return null; }
     }
-    const NEAR_KM = 50;   // the server's limit; the closest 30 come back, nearest first
+    const NEAR_MI = 30;   // about 48 km, under the server's 50 km limit; the closest 30 come back, nearest first
     // Text first (ID, town, state, interstate, exit, chain); coordinates, a Maps link or an address
-    // (when the text finds nothing) list the stops within NEAR_KM of that point, closest first. Stops sit on the
-    // interstate, often well outside the town they're named after (Harrisonburg's Pilot is 5.6 km out).
+    // (when the text finds nothing) list the stops within NEAR_MI of that point, closest first. Stops sit on the
+    // interstate, often well outside the town they're named after (Harrisonburg's Pilot is 3.5 mi out).
     async function searchStops() {
       if (!stopQuery) return $('stopFound').innerHTML = '';
       $('stopFound').innerHTML = '<p class="dim">Searching…</p>';
@@ -550,23 +555,22 @@
         }
       }
       if (around) {
-        const { data: near, error } = await sb.rpc('admin_stops_near', { p_lat: around.lat, p_lng: around.lng, p_km: NEAR_KM });
+        const { data: near, error } = await sb.rpc('admin_stops_near', { p_lat: around.lat, p_lng: around.lng, p_km: NEAR_MI * M_PER_MI / 1000 });
         if (error) return $('stopFoundMsg').textContent = error.message;
         data = near;
       }
       const where = (x) => [x.interstate && `${esc(x.interstate)}${x.exit ? ' exit ' + esc(x.exit) : ''}`, [x.city, x.state].filter(Boolean).map(esc).join(', ')].filter(Boolean).join(', ');
-      const far = (m) => m < 1000 ? `${m} m away` : `${(m / 1609.34).toFixed(1)} mi away`;
-      const head = around ? `<p class="dim small">Within ${NEAR_KM} km of ${label ? esc(label) : `${around.lat.toFixed(5)}, ${around.lng.toFixed(5)}`}:</p>` : '';
+      const head = around ? `<p class="dim small">Within ${NEAR_MI} mi of ${label ? esc(label) : `${around.lat.toFixed(5)}, ${around.lng.toFixed(5)}`}:</p>` : '';
       // A list, not a table: on a phone the switches must stay on screen next to the name.
       $('stopFound').innerHTML = head + (data.length ? `<div class="found">${data.map((x) => `<div class="foundRow${x.is_active ? '' : ' offMap'}">
           <div class="foundInfo"><b>${esc(x.chain)}</b> <span class="dim">#${x.id}</span>${x.is_active ? '' : ' <span class="dim">· off the map</span>'}
-            <div class="dim small">${where(x) || '-'}${x.distance_m != null ? ` · ${far(x.distance_m)}` : ''} · <a href="https://www.google.com/maps?q=${x.lat},${x.lng}&t=k" target="_blank" rel="noopener">satellite</a></div></div>
+            <div class="dim small">${where(x) || '-'}${x.distance_m != null ? ` · ${dist(x.distance_m)} away` : ''} · <a href="https://www.google.com/maps?q=${x.lat},${x.lng}&t=k" target="_blank" rel="noopener">satellite</a></div></div>
           <div class="foundActions">
             <label class="showersBox"><input type="checkbox" data-showers="${x.id}" ${x.has_showers ? 'checked' : ''}> ${x.has_showers ? 'Has showers' : '<b>No showers</b>'}</label>
             ${x.is_active ? `<button class="small danger" data-active="${x.id}" data-to="0">Remove from map</button>` : `<button class="small" data-active="${x.id}" data-to="1">Put back</button>`}
           </div>
         </div>`).join('')}</div>`
-        : `<p class="dim">${around ? `No truck stops within ${NEAR_KM} km.` : 'Nothing found. Try a town, an exit, coordinates or an address.'}</p>`);
+        : `<p class="dim">${around ? `No truck stops within ${NEAR_MI} mi.` : 'Nothing found. Try a town, an exit, coordinates or an address.'}</p>`);
     }
     $('stopSearch').onsubmit = (e) => { e.preventDefault(); stopQuery = $('stopQ').value.trim(); $('stopFoundMsg').textContent = ''; searchStops(); };
     $('stopFound').addEventListener('click', async (e) => {
