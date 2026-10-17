@@ -454,7 +454,7 @@
       if (!$('passList')) return;   // the card was closed meanwhile
       if (error) return $('passList').innerHTML = `<p class="msg">${esc(error.message)}</p>`;
       const dur = (sec) => sec < 90 ? `${Math.max(1, Math.round(sec))} s` : `${Math.round(sec / 60)} min`;
-      const verdict = (p) => (p.zone_seconds ?? 0) >= 60 ? ['pulled in', `${dur(p.zone_seconds)} in the zone`, 'var(--accent)']
+      const verdict = (p) => (p.zone_seconds ?? 0) >= 180 ? ['pulled in', `${dur(p.zone_seconds)} in the zone`, 'var(--accent)']
         : p.min_distance_m != null && p.min_distance_m <= 300 ? ['drove through', p.zone_seconds ? `${dur(p.zone_seconds)} in the zone` : '', '#e8b04a']
         : ['near', 'outside the zone', 'var(--dim)'];
       const where = (p) => [p.interstate && `${esc(p.interstate)}${p.exit ? ' exit ' + esc(p.exit) : ''}`, [p.city, p.state].filter(Boolean).map(esc).join(', ')].filter(Boolean).join(', ');
