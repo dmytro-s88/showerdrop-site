@@ -530,8 +530,10 @@
         return hit ? { lat: Number(hit.lat), lng: Number(hit.lon), label: hit.display_name } : null;
       } catch { return null; }
     }
+    const NEAR_KM = 50;   // the server's limit; the closest 30 come back, nearest first
     // Text first (ID, town, state, interstate, exit, chain); coordinates, a Maps link or an address
-    // (when the text finds nothing) list the stops within 5 km of that point, closest first.
+    // (when the text finds nothing) list the stops within NEAR_KM of that point, closest first. Stops sit on the
+    // interstate, often well outside the town they're named after (Harrisonburg's Pilot is 5.6 km out).
     async function searchStops() {
       if (!stopQuery) return $('stopFound').innerHTML = '';
       $('stopFound').innerHTML = '<p class="dim">Searching…</p>';
@@ -548,13 +550,13 @@
         }
       }
       if (around) {
-        const { data: near, error } = await sb.rpc('admin_stops_near', { p_lat: around.lat, p_lng: around.lng, p_km: 5 });
+        const { data: near, error } = await sb.rpc('admin_stops_near', { p_lat: around.lat, p_lng: around.lng, p_km: NEAR_KM });
         if (error) return $('stopFoundMsg').textContent = error.message;
         data = near;
       }
       const where = (x) => [x.interstate && `${esc(x.interstate)}${x.exit ? ' exit ' + esc(x.exit) : ''}`, [x.city, x.state].filter(Boolean).map(esc).join(', ')].filter(Boolean).join(', ');
       const far = (m) => m < 1000 ? `${m} m away` : `${(m / 1609.34).toFixed(1)} mi away`;
-      const head = around ? `<p class="dim small">Within 5 km of ${label ? esc(label) : `${around.lat.toFixed(5)}, ${around.lng.toFixed(5)}`}:</p>` : '';
+      const head = around ? `<p class="dim small">Within ${NEAR_KM} km of ${label ? esc(label) : `${around.lat.toFixed(5)}, ${around.lng.toFixed(5)}`}:</p>` : '';
       // A list, not a table: on a phone the switches must stay on screen next to the name.
       $('stopFound').innerHTML = head + (data.length ? `<div class="found">${data.map((x) => `<div class="foundRow${x.is_active ? '' : ' offMap'}">
           <div class="foundInfo"><b>${esc(x.chain)}</b> <span class="dim">#${x.id}</span>${x.is_active ? '' : ' <span class="dim">· off the map</span>'}
@@ -564,7 +566,7 @@
             ${x.is_active ? `<button class="small danger" data-active="${x.id}" data-to="0">Remove from map</button>` : `<button class="small" data-active="${x.id}" data-to="1">Put back</button>`}
           </div>
         </div>`).join('')}</div>`
-        : `<p class="dim">${around ? 'No truck stops within 5 km.' : 'Nothing found. Try a town, an exit, coordinates or an address.'}</p>`);
+        : `<p class="dim">${around ? `No truck stops within ${NEAR_KM} km.` : 'Nothing found. Try a town, an exit, coordinates or an address.'}</p>`);
     }
     $('stopSearch').onsubmit = (e) => { e.preventDefault(); stopQuery = $('stopQ').value.trim(); $('stopFoundMsg').textContent = ''; searchStops(); };
     $('stopFound').addEventListener('click', async (e) => {
