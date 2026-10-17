@@ -495,7 +495,9 @@
       const { data } = await sb.from('chains').select('id,name').order('name');
       if (!data) return;
       $('addChain').innerHTML = '<option value="">Chain…</option>' + data.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+      $('stopChain').innerHTML = '<option value="">All chains</option>' + data.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
       chainsLoaded = true;
+      loadStopStates();
     }
     // "36.69653, -97.34925", "36.69653,-97.34925" or a link with "@36.69653,-97.34925,17z" / "?q=36.69,-97.34".
     const parseCoords = (t) => {
@@ -539,7 +541,27 @@
     // Text first (ID, town, state, interstate, exit, chain); coordinates, a Maps link or an address
     // (when the text finds nothing) list the stops within NEAR_MI of that point, closest first. Stops sit on the
     // interstate, often well outside the town they're named after (Harrisonburg's Pilot is 3.5 mi out).
+    // The state picker: full names, with how many stops each has.
+    const STATE_NAMES = { AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California', CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', DC: 'District of Columbia', FL: 'Florida', GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi', MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire', NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York', NC: 'North Carolina', ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming' };
+    const stateName = (st) => STATE_NAMES[st] ?? st;
+    async function loadStopStates() {
+      const { data } = await sb.rpc('admin_stop_states');
+      if (!data) return;
+      const keep = $('stopState').value;
+      $('stopState').innerHTML = '<option value="">All states</option>' + data.slice().sort((a, b) => stateName(a.state).localeCompare(stateName(b.state)))
+        .map((x) => `<option value="${esc(x.state)}">${esc(stateName(x.state))} (${x.n})</option>`).join('');
+      $('stopState').value = keep;
+    }
     async function searchStops() {
+      const st = $('stopState').value, ch = $('stopChain').value;
+      // A state or a chain picked: all their stops, in road order, narrowed by the text.
+      if (st || ch) {
+        $('stopFound').innerHTML = '<p class="dim">Loading…</p>';
+        const { data, error } = await sb.rpc('admin_stop_list', { p_state: st || null, p_chain_id: ch ? Number(ch) : null, p_q: stopQuery || null });
+        if (error) return $('stopFoundMsg').textContent = error.message;
+        const what = [st ? stateName(st) : 'All states', ch ? $('stopChain').selectedOptions[0].textContent : '', stopQuery ? `"${stopQuery}"` : ''].filter(Boolean).join(', ');
+        return showStops(data, `<p class="dim small">${esc(what)}: ${data.length} truck stop${data.length === 1 ? '' : 's'}${data.length >= 1000 ? ' (the first 1000)' : ''}</p>`, 'Nothing here. Try another state, chain or text.');
+      }
       if (!stopQuery) return $('stopFound').innerHTML = '';
       $('stopFound').innerHTML = '<p class="dim">Searching…</p>';
       let data = null, around = null, label = '';
@@ -559,8 +581,11 @@
         if (error) return $('stopFoundMsg').textContent = error.message;
         data = near;
       }
-      const where = (x) => [x.interstate && `${esc(x.interstate)}${x.exit ? ' exit ' + esc(x.exit) : ''}`, [x.city, x.state].filter(Boolean).map(esc).join(', ')].filter(Boolean).join(', ');
       const head = around ? `<p class="dim small">Within ${NEAR_MI} mi of ${label ? esc(label) : `${around.lat.toFixed(5)}, ${around.lng.toFixed(5)}`}:</p>` : '';
+      showStops(data, head, around ? `No truck stops within ${NEAR_MI} mi.` : 'Nothing found. Try a town, an exit, coordinates or an address.');
+    }
+    function showStops(data, head, empty) {
+      const where = (x) => [x.interstate && `${esc(x.interstate)}${x.exit ? ' exit ' + esc(x.exit) : ''}`, [x.city, x.state].filter(Boolean).map(esc).join(', ')].filter(Boolean).join(', ');
       // A list, not a table: on a phone the switches must stay on screen next to the name.
       $('stopFound').innerHTML = head + (data.length ? `<div class="found">${data.map((x) => `<div class="foundRow${x.is_active ? '' : ' offMap'}">
           <div class="foundInfo"><b>${esc(x.chain)}</b> <span class="dim">#${x.id}</span>${x.is_active ? '' : ' <span class="dim">· off the map</span>'}
@@ -570,9 +595,10 @@
             ${x.is_active ? `<button class="small danger" data-active="${x.id}" data-to="0">Remove from map</button>` : `<button class="small" data-active="${x.id}" data-to="1">Put back</button>`}
           </div>
         </div>`).join('')}</div>`
-        : `<p class="dim">${around ? `No truck stops within ${NEAR_MI} mi.` : 'Nothing found. Try a town, an exit, coordinates or an address.'}</p>`);
+        : `<p class="dim">${esc(empty)}</p>`);
     }
     $('stopSearch').onsubmit = (e) => { e.preventDefault(); stopQuery = $('stopQ').value.trim(); $('stopFoundMsg').textContent = ''; searchStops(); };
+    for (const id of ['stopState', 'stopChain']) $(id).onchange = () => { stopQuery = $('stopQ').value.trim(); $('stopFoundMsg').textContent = ''; searchStops(); };
     $('stopFound').addEventListener('click', async (e) => {
       const b = e.target.closest('[data-active]');
       if (!b) return;

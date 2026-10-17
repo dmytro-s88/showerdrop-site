@@ -227,6 +227,8 @@
       .dev { display: inline-block; font-size: 11px; font-weight: 700; color: #0e2a16; background: #4fbf6a; border-radius: 4px; padding: 1px 5px; letter-spacing: .3px; }
       p.small { font-size: 14px; margin: 0 0 10px; }
       .stopSearch { display: flex; gap: 8px; margin-bottom: 10px; }
+      .stopFilters { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+      .stopFilters select { flex: 1 1 140px; max-width: none; width: auto; min-width: 0; }
       .addStop { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
       .addStop #addCoords, .addStop button, .addStop select { grid-column: 1 / -1; }
       .addStop input, .addStop select { min-width: 0; width: 100%; max-width: none; }
@@ -403,7 +405,8 @@
             </form>
             <p class="msg" id="addStopMsg"></p>
             <h2 class="sub-h">Find a truck stop</h2>
-            <p class="dim small">By ID, town, state, interstate, exit or chain - or an address, coordinates or a Google Maps link (then the stops within 30 miles, closest first). "Has showers" off: drivers see "no showers here". "Remove from map": not a truck stop at all; it can be put back.</p>
+            <p class="dim small">Pick a state and / or a chain to see all their stops in road order (interstate, then exit); the text narrows the list. With neither picked, search by ID, town, interstate or exit - or an address, coordinates or a Google Maps link (then the stops within 30 miles, closest first). "Has showers" off: drivers see "no showers here". "Remove from map": not a truck stop at all; it can be put back.</p>
+            <div class="stopFilters"><select id="stopState" aria-label="State"><option value="">All states</option></select><select id="stopChain" aria-label="Chain"><option value="">All chains</option></select></div>
             <form id="stopSearch" class="stopSearch"><input id="stopQ" placeholder="Tonkawa, I-35 214, an address, 36.69, -97.34" autocomplete="off"><button class="small">Search</button></form>
             <div id="stopFound"></div>
             <p class="msg" id="stopFoundMsg"></p>
@@ -473,6 +476,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous"></script>
-  <script src="app.js?v=20261016r"></script>
+  <script src="app.js?v=20261017a"></script>
 </body>
 </html>
