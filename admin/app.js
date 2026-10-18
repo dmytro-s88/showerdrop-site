@@ -180,7 +180,75 @@
     window.addEventListener('hashchange', () => { $('drawerHost').innerHTML = ''; if (!$('dash').hidden) showTab(); });
 
     // ---- dashboard ----------------------------------------------------------
-    async function loadDashboard() { await Promise.all([loadOverview(), loadLive()]); }
+    async function loadDashboard() { await Promise.all([loadOverview(), loadLive(), loadServer()]); }
+
+    // Server load: the worker measures once a minute (see migration 76). Level and numbers now, then the last
+    // 24 hours in 5-minute steps, one small chart per measure, a dashed line where "busy" starts.
+    async function loadServer() {
+      const { data: s, error } = await sb.rpc('admin_server_load');
+      if (error) return;
+      const box = $('server'), nw = s.now;
+      if (!nw) { box.innerHTML = '<div class="serverHead"><h2>Server</h2></div><p class="note">No measurements yet. The first one comes a minute after the worker update.</p>'; return; }
+      const stale = Date.now() - new Date(nw.at).getTime() > 5 * 60 * 1000;
+      const [label, cls] = stale ? ['No fresh measurement', 'stale']
+        : { ok: ['Running fine', 'ok'], busy: ['Busy', 'busy'], critical: ['Overloaded', 'crit'] }[nw.level];
+      const tile = (v, unit, name, hot) => `<div class="${hot ? 'hot' : ''}"><b>${v == null ? '-' : `${Math.round(v)}<small>${unit}</small>`}</b><span>${name}</span></div>`;
+      const pts = s.points.map((p) => ({ ...p, t: new Date(p.at).getTime() }));
+      box.innerHTML = `<div class="serverHead"><h2>Server</h2><span class="lvl ${cls}"><i></i>${label}</span><span class="when">measured ${ago(nw.at)}</span></div>
+        <div class="tiles">
+          ${tile(nw.pulse_ms, 'ms', 'Response', nw.pulse_ms >= 1000)}
+          ${tile(nw.cpu_pct, '%', 'CPU', nw.cpu_pct >= 85)}
+          ${tile(nw.mem_pct, '%', 'Memory', nw.mem_pct >= 90)}
+          <div class="${nw.connections >= 0.8 * nw.max_connections ? 'hot' : ''}"><b>${nw.connections}<small>of ${nw.max_connections}</small></b><span>Connections</span></div>
+          ${tile(nw.disk_pct, '%', 'Disk used', nw.disk_pct >= 80)}
+          ${tile(nw.db_mb, 'MB', 'Database', false)}
+        </div>
+        <div class="sparks">
+          ${spark('pulse', 'Response time, ms', pts, 1000)}
+          ${spark('cpu', 'CPU, %', pts, 85, 100)}
+          ${spark('mem', 'Memory, %', pts, 90, 100)}
+        </div>
+        ${nw.metrics_note ? `<p class="note">CPU, memory and disk aren't available: ${esc(nw.metrics_note)}</p>` : ''}`;
+      for (const el of box.querySelectorAll('.spark')) hoverSpark(el, pts);
+    }
+    // One measure over 24 h. Gaps over 10 minutes (worker down, no samples) break the line instead of bridging it.
+    function spark(key, title, pts, busy, fixedMax) {
+      const end = Date.now(), start = end - 24 * 3600 * 1000;
+      const vals = pts.filter((p) => p[key] != null);
+      const max = fixedMax ?? Math.max(busy * 1.2, ...vals.map((p) => p[key]));
+      const x = (t) => ((t - start) / (end - start)) * 1000, y = (v) => 100 - (Math.min(v, max) / max) * 100;
+      let line = '', area = '', prev = null, runStart = null;
+      for (const p of vals) {
+        const gap = !prev || p.t - prev.t > 10 * 60 * 1000;
+        if (gap && prev) area += `L${x(prev.t)},100L${x(runStart)},100Z`;
+        if (gap) runStart = p.t;
+        line += `${gap ? 'M' : 'L'}${x(p.t)},${y(p[key])}`;
+        area += `${gap ? `M${x(p.t)},100L` : 'L'}${x(p.t)},${y(p[key])}`;
+        prev = p;
+      }
+      if (prev) area += `L${x(prev.t)},100L${x(runStart)},100Z`;
+      const limit = busy <= max ? `<line class="limit" x1="0" x2="1000" y1="${y(busy)}" y2="${y(busy)}"></line>` : '';
+      return `<div class="spark" data-key="${key}" data-max="${max}"><h3>${title}</h3>
+        <div class="plot"><span class="top">${Math.round(max)}</span>
+          <svg viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">${limit}<path class="area" d="${area}"></path><path class="line" d="${line}"></path></svg>
+        </div><div class="ax"><span>24 h ago</span><span>12 h</span><span>now</span></div></div>`;
+    }
+    function hoverSpark(el, pts) {
+      const key = el.dataset.key, unit = key === 'pulse' ? ' ms' : '%', plot = el.querySelector('.plot');
+      const vals = pts.filter((p) => p[key] != null);
+      plot.addEventListener('mousemove', (e) => {
+        const r = plot.getBoundingClientRect(), end = Date.now(), start = end - 24 * 3600 * 1000;
+        const t = start + ((e.clientX - r.left) / r.width) * (end - start);
+        let best = null;
+        for (const p of vals) if (!best || Math.abs(p.t - t) < Math.abs(best.t - t)) best = p;
+        plot.querySelector('.cursor')?.remove(); plot.querySelector('.tip')?.remove();
+        if (!best || Math.abs(best.t - t) > 15 * 60 * 1000) return;
+        const left = ((best.t - start) / (end - start)) * 100;
+        const when = new Date(best.t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        plot.insertAdjacentHTML('beforeend', `<div class="cursor" style="left:${left}%"></div><div class="tip" style="left:${Math.min(88, Math.max(12, left))}%">${when}: <b>${best[key]}${unit}</b></div>`);
+      });
+      plot.addEventListener('mouseleave', () => { plot.querySelector('.cursor')?.remove(); plot.querySelector('.tip')?.remove(); });
+    }
 
     async function loadOverview() {
       const { data: o, error } = await sb.rpc('admin_overview');

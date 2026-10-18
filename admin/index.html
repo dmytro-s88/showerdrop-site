@@ -62,7 +62,7 @@
     /* Dashboard. The one bold thing is the "right now" board, the truck stop sign's price board from the
        site: big condensed digits that light up green only while something is happening. All else is quiet. */
     .dash { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 18px 28px; margin: 14px 0 6px;
-            grid-template-areas: "now needs" "chart facts"; }
+            grid-template-areas: "now needs" "chart facts" "server server"; }
     .dash > * { min-width: 0; }
     .nowBoard { grid-area: now; display: flex; gap: 10px; background: #050809; border-radius: 14px; padding: 10px;
                 box-shadow: 0 0 0 1px #2c3638; }
@@ -113,9 +113,39 @@
     .facts dd { margin: 0; padding: 6px 0; border-top: 1px solid #2c3638; }
     .facts dt:first-of-type, .facts dd:first-of-type { border-top: 0; }
     .facts dd small { color: var(--dim); font-size: 14px; }
+    /* Server load: level, numbers now, the last 24 hours as three small charts (one measure each). */
+    .server { grid-area: server; border-top: 1px solid #2c3638; padding-top: 14px; }
+    .serverHead { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; }
+    .serverHead h2 { font-size: 17px; margin: 0; }
+    .serverHead .when { color: var(--dim); font-size: 14px; }
+    .lvl { display: inline-flex; align-items: center; gap: 7px; font-weight: 500; }
+    .lvl i { width: 10px; height: 10px; border-radius: 50%; background: var(--steel-dark); }
+    .lvl.ok i { background: #199e70; } .lvl.busy i { background: var(--amber); } .lvl.crit i { background: #d95926; }
+    .lvl.busy, .lvl.crit { color: var(--amber); }
+    .tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin: 12px 0 16px; }
+    .tiles div { background: var(--surface2); border-radius: 10px; padding: 8px 12px; }
+    .tiles b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; }
+    .tiles b small { font-size: 14px; font-weight: 500; color: var(--dim); margin-left: 3px; }
+    .tiles span { font-size: 13px; color: var(--dim); }
+    .tiles .hot b { color: var(--amber); }
+    .sparks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 28px; }
+    .spark h3 { font-size: 14px; font-weight: 500; color: var(--dim); margin: 0 0 6px; }
+    .spark .plot { position: relative; height: 72px; border-bottom: 1px solid #3a4548; }
+    .spark svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+    .spark .line { fill: none; stroke: #3987e5; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+    .spark .area { fill: rgba(57, 135, 229, .14); }
+    .spark .limit { stroke: var(--amber); stroke-width: 1; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; opacity: .8; }
+    .spark .top { position: absolute; right: 0; top: -16px; font-size: 12px; color: var(--dim); }
+    .spark .ax { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); margin-top: 4px; }
+    .spark .cursor { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--steel); pointer-events: none; }
+    .spark .tip { position: absolute; top: -8px; transform: translate(-50%, -100%); background: var(--steel); color: var(--ink);
+                  border-radius: 8px; padding: 5px 9px; font-size: 13px; white-space: nowrap; pointer-events: none; z-index: 2; }
+    .server .note { color: var(--dim); font-size: 14px; margin: 12px 0 0; }
     .liveLists { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 28px; }
     @media (max-width: 1000px) {
-      .dash { grid-template-columns: minmax(0, 1fr); grid-template-areas: "now" "needs" "chart" "facts"; }
+      .dash { grid-template-columns: minmax(0, 1fr); grid-template-areas: "now" "needs" "chart" "facts" "server"; }
+      .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .sparks { grid-template-columns: minmax(0, 1fr); }
       .liveLists { grid-template-columns: minmax(0, 1fr); }
     }
     @media (max-width: 560px) {
@@ -316,6 +346,7 @@
           <div class="needs" id="needs"></div>
           <div class="chartBox" id="chartBox"></div>
           <div class="facts" id="facts"></div>
+          <div class="server" id="server"></div>
         </div>
         <div class="liveLists">
           <section><h2>Open exchanges <em id="openCount"></em></h2><div id="openList"></div></section>
@@ -476,6 +507,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous"></script>
-  <script src="app.js?v=20261017c"></script>
+  <script src="app.js?v=20261018a"></script>
 </body>
 </html>
