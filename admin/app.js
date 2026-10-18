@@ -660,6 +660,7 @@
             <div class="dim small">${where(x) || '-'}${x.distance_m != null ? ` · ${dist(x.distance_m)} away` : ''} · <a href="https://www.google.com/maps?q=${x.lat},${x.lng}&t=k" target="_blank" rel="noopener">satellite</a></div></div>
           <div class="foundActions">
             <label class="showersBox"><input type="checkbox" data-showers="${x.id}" ${x.has_showers ? 'checked' : ''}> ${x.has_showers ? 'Has showers' : '<b>No showers</b>'}</label>
+            <button class="small" data-zone="${x.id}">Pin &amp; zone</button>
             ${x.is_active ? `<button class="small danger" data-active="${x.id}" data-to="0">Remove from map</button>` : `<button class="small" data-active="${x.id}" data-to="1">Put back</button>`}
           </div>
         </div>`).join('')}</div>`
@@ -668,6 +669,8 @@
     $('stopSearch').onsubmit = (e) => { e.preventDefault(); stopQuery = $('stopQ').value.trim(); $('stopFoundMsg').textContent = ''; searchStops(); };
     for (const id of ['stopState', 'stopChain']) $(id).onchange = () => { stopQuery = $('stopQ').value.trim(); $('stopFoundMsg').textContent = ''; searchStops(); };
     $('stopFound').addEventListener('click', async (e) => {
+      const z = e.target.closest('[data-zone]');
+      if (z) return openZone(Number(z.dataset.zone));
       const b = e.target.closest('[data-active]');
       if (!b) return;
       const on = b.dataset.to === '1';
@@ -685,6 +688,45 @@
       $('stopFoundMsg').textContent = error ? error.message : has ? 'Showers on: the stop works as usual.' : 'Marked: no showers at this stop.';
       searchStops();
     });
+
+    // Pin & zone: where the stop is and how far around it the app counts a driver as there (300 m unless set;
+    // long, narrow truck lots may need more, up to 800 m - more would swallow the next stop at the exit).
+    const ZONES = [[null, '1,000 ft (300 m, default)'], [400, '1,300 ft (400 m)'], [500, '1,650 ft (500 m)'], [600, '2,000 ft (600 m)'], [800, '2,600 ft (800 m)']];
+    async function openZone(id) {
+      const { data: z, error } = await sb.rpc('admin_stop_zone', { p_id: id });
+      if (error) return $('stopFoundMsg').textContent = error.message;
+      const where = [z.interstate && `${z.interstate}${z.exit ? ' exit ' + z.exit : ''}`, [z.city, z.state].filter(Boolean).join(', ')].filter(Boolean).join(', ');
+      const opts = ZONES.some(([m]) => m === z.radius_m) ? ZONES : [...ZONES, [z.radius_m, `${Math.round(z.radius_m * 3.28084 / 50) * 50} ft (${z.radius_m} m)`]];
+      $('drawerHost').innerHTML = `<div class="drawerBack" id="drawerBack"></div><div class="drawer" id="drawer">
+        <button class="close small" id="drawerClose">Close</button>
+        <h2>${esc(z.chain)}${z.number ? ' #' + esc(z.number) : ''} <span class="dim small">stop ${z.id}</span></h2>
+        <p class="dim">${esc(where || '-')}${z.is_active ? '' : ' · off the map'} · <a href="https://www.google.com/maps?q=${z.lat},${z.lng}&t=k" target="_blank" rel="noopener" id="zoneSat">satellite</a></p>
+        <div id="zoneMap" class="passMap" style="height:380px"></div>
+        <p class="dim small">Drag the pin onto the building with the showers. The circle is where the app counts a driver as being at this stop: make it cover the truck lot, but not the next stop.</p>
+        <div class="zoneRow">
+          <label>Zone <select id="zoneR">${opts.map(([m, t]) => `<option value="${m ?? ''}" ${m === z.radius_m ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+          <button class="primary" id="zoneSave">Save</button>
+        </div>
+        <p class="msg" id="zoneMsg"></p>
+      </div>`;
+      const close = () => { $('drawerHost').innerHTML = ''; };
+      $('drawerBack').onclick = close; $('drawerClose').onclick = close;
+      const zm = L.map('zoneMap', { scrollWheelZoom: false }).setView([z.lat, z.lng], 16);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(zm);
+      const radius = () => Number($('zoneR').value) || z.default_m;
+      const pin = L.marker([z.lat, z.lng], { draggable: true }).addTo(zm);
+      const ring = L.circle([z.lat, z.lng], { radius: radius(), color: '#4fbf6a', weight: 1, fillOpacity: 0.1 }).addTo(zm);
+      const fit = () => zm.fitBounds(ring.getBounds(), { padding: [20, 20] });
+      setTimeout(() => { zm.invalidateSize(); fit(); }, 50);
+      pin.on('drag', () => ring.setLatLng(pin.getLatLng()));
+      $('zoneR').onchange = () => { ring.setRadius(radius()); fit(); };
+      $('zoneSave').onclick = async () => {
+        const { lat, lng } = pin.getLatLng(), r = $('zoneR').value ? Number($('zoneR').value) : null;
+        const { error } = await sb.rpc('admin_stop_set_zone', { p_id: z.id, p_lat: lat, p_lng: lng, p_radius_m: r });
+        $('zoneMsg').textContent = error ? error.message : `Saved: ${lat.toFixed(5)}, ${lng.toFixed(5)}, zone ${r ? r + ' m' : 'default (300 m)'}.`;
+        if (!error) $('zoneSat').href = `https://www.google.com/maps?q=${lat},${lng}&t=k`;
+      };
+    }
 
     async function loadOtherChains() {
       const { data, error } = await sb.rpc('admin_other_chains');
