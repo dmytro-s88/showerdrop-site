@@ -47,7 +47,7 @@
           </div>
           <span id="release" data-i18n="release.default">Beta · latest version</span>
         </div>
-        <a class="where-link" href="#where" id="where-link"><i aria-hidden="true"></i><span>Works at 1,634 truck stops in 45 states</span></a>
+        <a class="where-link" href="#where" id="where-link"><i aria-hidden="true"></i><span>Works at 1,650 truck stops in 45 states</span></a>
       </div>
     </section>
 
@@ -72,7 +72,7 @@
     <!-- Where it works: every truck stop in the app, drawn by scripts/site-map/build.mjs into stops-map.svg
          (loaded when the section comes near). Tap a dot: the stop and a link to directions. -->
     <section class="where" id="where" aria-labelledby="where-h">
-      <h2 id="where-h">Works at 1,634 truck stops</h2>
+      <h2 id="where-h">Works at 1,650 truck stops</h2>
       <p class="where-sub" id="where-sub">Every Love's, Pilot Flying J and TA Petro travel center we know of, in 45 states.</p>
       <div class="where-chains" id="where-chains" aria-hidden="true"></div>
       <div class="where-map" id="where-map" role="img" aria-labelledby="where-h"></div>
@@ -163,7 +163,7 @@
         document.getElementById('where-chains').innerHTML = CHAINS.map((c, i) => `<span><i class="c${i}"></i><b>${n(counts.chains[i])}</b> ${c}</span>`).join('');
         if (picked) show(picked);
       };
-      fetch('stops-map.json?v=20261017b').then((r) => r.ok ? r.json() : null).then((c) => { if (c) { counts = c; texts(); } }).catch(() => {});
+      fetch('stops-map.json?v=20261018a').then((r) => r.ok ? r.json() : null).then((c) => { if (c) { counts = c; texts(); } }).catch(() => {});
       // The dots are small on a phone: a tap picks the nearest one within reach.
       const show = (dot) => {
         picked = dot;
@@ -190,7 +190,7 @@
         }
         if (best) show(best);
       };
-      const load = () => fetch('stops-map.svg?v=20261017b').then((r) => r.ok ? r.text() : Promise.reject(r.status)).then((t) => {
+      const load = () => fetch('stops-map.svg?v=20261018a').then((r) => r.ok ? r.text() : Promise.reject(r.status)).then((t) => {
         box.innerHTML = t;
         svg = box.querySelector('svg');
         svg.addEventListener('click', onTap);
