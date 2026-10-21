@@ -331,9 +331,9 @@
       const seq = ++userSeq;
       const { data: u, error } = await sb.rpc('admin_users', { p_limit: PAGE, p_offset: offset, p_q: $('userQ').value.trim() || null });
       if (error || seq !== userSeq) return;
-      const device = (x) => x.platform ? `${x.platform === 'ios' ? 'iPhone' : x.platform === 'android' ? 'Android' : 'Web'}${x.app_build ? ` · ${x.app_build}` : ''}` : '-';
+      const device = (x) => (x.platform ? `${x.platform === 'ios' ? 'iPhone' : x.platform === 'android' ? 'Android' : 'Web'}${x.app_build ? ` · ${x.app_build}` : ''}` : '-') + permMarks(x);
       $('userList').innerHTML = table(['', 'Nickname', 'Device', 'Sign-in', 'Email', 'Chains', 'Gave', 'Got', 'Joined', 'Last seen', ''],
-        u.rows.map((x) => `<tr><td>${avatarImg(x)}</td><td>${userLink(x.id, x.nickname)}${x.name ? `<div class="dim small">${esc(x.name)}</div>` : ''}</td><td class="dim">${device(x)}</td><td class="dim">${esc(x.method)}</td><td class="dim">${esc(x.email ?? '')}</td><td>${esc(x.chains ?? '')}</td><td>${x.given}</td><td>${x.received}</td><td class="dim">${time(x.created_at)}</td><td class="dim">${ago(x.last_seen_at ?? x.last_sign_in_at)}</td><td class="flag">${x.dev_mode ? '<span class="dev" title="Developer mode on">dev</span> ' : ''}${[x.is_blocked && 'blocked', x.in_cooldown && 'cooldown', x.flagged && 'flagged', !x.has_push && 'no push'].filter(Boolean).join(' · ')}</td></tr>`));
+        u.rows.map((x) => `<tr><td>${avatarImg(x)}</td><td>${userLink(x.id, x.nickname)}${x.name ? `<div class="dim small">${esc(x.name)}</div>` : ''}</td><td class="dim">${device(x)}</td><td class="dim">${esc(x.method)}</td><td class="dim">${esc(x.email ?? '')}</td><td>${esc(x.chains ?? '')}</td><td>${x.given}</td><td>${x.received}</td><td class="dim">${time(x.created_at)}</td><td class="dim">${ago(x.last_seen_at ?? x.last_sign_in_at)}</td><td class="flag">${x.dev_mode ? '<span class="dev" title="Developer mode on">dev</span> ' : ''}${[x.is_blocked && 'blocked', x.in_cooldown && 'cooldown', x.flagged && 'flagged'].filter(Boolean).join(' · ')}</td></tr>`));
       pager('userPager', u.total, offset, loadUsers);
       fillSigned($('userList'), 'avatars', 'avatar');
     }
@@ -357,6 +357,23 @@
       nothing_to_adjust: 'Enter a number for given or received.' };
     const errText = (e) => modErrors[e.message] ?? e.message;
 
+    // What the phone allows (sent with the app's hello since build 58): a bell for notifications, an arrow for
+    // location. Green allowed ("Always" for location: works in the background), amber location only while the app is
+    // open, red turned off, grey unknown (an older app; for the bell, "no push token" then shows as red).
+    const PUSH_TEXT = { granted: ['ok', 'Notifications allowed'], denied: ['no', 'Notifications turned off'], undetermined: ['unk', 'Notifications not asked yet'] };
+    const LOC_TEXT = { always: ['ok', 'Location: Always (works in the background)'], foreground: ['half', 'Location: only while the app is open'],
+      denied: ['no', 'Location turned off'], undetermined: ['unk', 'Location not asked yet'] };
+    const ICON = {
+      bell: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.4-2h-4.8A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.8V3.5a1.5 1.5 0 0 0-3 0v.7A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg>',
+      pin: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M21 3 3 10.5v1l7 2.5 2.5 7h1L21 3Z"/></svg>',
+    };
+    const pushState = (x) => PUSH_TEXT[x.push_perm] ?? (x.has_push ? ['unk', 'Notifications: unknown (older app), has a push token'] : ['no', 'No push token']);
+    const locState = (x) => LOC_TEXT[x.location_perm] ?? ['unk', 'Location: unknown (older app)'];
+    const permMarks = (x) => {
+      const [pc, pt] = pushState(x), [lc, lt] = locState(x);
+      return `<span class="perm"><span class="pm ${pc}" title="${pt}">${ICON.bell}</span><span class="pm ${lc}" title="${lt}">${ICON.pin}</span></span>`;
+    };
+
     async function openUser(id) {
       const { data: u, error } = await sb.rpc('admin_user', { p_id: id });
       if (error || !u) return;
@@ -371,7 +388,8 @@
           <div>Name</div><div>${u.name ? `${esc(u.name)} <span class="dim">(from Google)</span>` : '<span class="dim">- (signed in by email code)</span>'}</div>
           <div>Joined</div><div>${time(u.created_at)} · last seen ${ago(u.last_seen_at ?? u.last_sign_in_at)}${u.platform ? ` · ${u.platform === 'ios' ? 'iPhone' : u.platform === 'android' ? 'Android' : 'Web'}${u.app_build ? ' ' + u.app_build : ''}` : ''}</div>
           <div>Chains</div><div>${esc(u.chains || '-')}</div>
-          <div>Language</div><div>${esc(u.language)}${u.has_push ? '' : ' · no push token'}</div>
+          <div>Language</div><div>${esc(u.language)}</div>
+          <div>Phone allows</div><div>${permMarks(u)} ${pushState(u)[1]} · ${locState(u)[1]}${u.perms_at ? ` <span class="dim">(as of ${ago(u.perms_at)})</span>` : ''}</div>
           <div>Given</div><div><b>${u.given_real + u.given_adj}</b> = ${u.given_real} real ${u.given_adj >= 0 ? '+' : '−'} ${Math.abs(u.given_adj)} adjusted</div>
           <div>Received</div><div><b>${u.received_real + u.received_adj}</b> = ${u.received_real} real ${u.received_adj >= 0 ? '+' : '−'} ${Math.abs(u.received_adj)} adjusted</div>
           <div>Fair use</div><div>received − given = <b>${u.balance}</b> (warn at 3, blocked at 5)</div>
