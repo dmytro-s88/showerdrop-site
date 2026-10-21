@@ -318,8 +318,11 @@
           <div class="meta">started ${ago(x.created_at)} · ${until(x.expires_at)}${x.queue_number ? ` · #${x.queue_number} in line` : ''}${x.retry_used ? ' · retry used' : ''}${x.has_photo ? ' · photo' : ''}</div>
         </div>`).join('')}</div>` : '<div class="empty">No open exchanges right now.</div>';
       $('shiftCount').textContent = l.shifts.length || '';
-      $('shiftList').innerHTML = table(['Donor', 'Stop', 'Chain', 'Since', 'Until'],
-        l.shifts.map((s) => `<tr><td>${esc(s.nickname)}</td><td>${esc(s.stop)}</td><td>${esc(s.chain)}</td><td class="dim">${ago(s.checked_in_at)}</td><td class="dim">${until(s.expires_at)}</td></tr>`));
+      // Kind: automatic (the phone's geofence; "starts in N min" while its 3-minute wait runs) or manual.
+      const kind = (s) => !s.auto ? 'manual' : new Date(s.active_from) > Date.now()
+        ? `automatic · starts in ${Math.max(1, Math.ceil((new Date(s.active_from) - Date.now()) / 60000))} min` : 'automatic';
+      $('shiftList').innerHTML = table(['Donor', 'Stop', 'Chain', 'Kind', 'Since', 'Until'],
+        l.shifts.map((s) => `<tr><td>${esc(s.nickname)}</td><td>${esc(s.stop)}</td><td>${esc(s.chain)}</td><td class="dim">${kind(s)}</td><td class="dim">${ago(s.checked_in_at)}</td><td class="dim">${until(s.expires_at)}</td></tr>`));
       $('closedList').innerHTML = table(['Status', 'Stop', 'Receiver', 'Donor', 'Closed', 'Reason'],
         l.recent_exchanges.map((x) => `<tr><td>${pill(x.status)}</td><td>${esc(x.stop)}</td><td>${esc(x.receiver)}</td><td>${esc(x.donor)}</td><td class="dim">${ago(x.updated_at)}</td><td class="dim">${esc(x.decline_reason ?? '')}</td></tr>`));
     }
@@ -367,13 +370,14 @@
       bell: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.4-2h-4.8A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.8V3.5a1.5 1.5 0 0 0-3 0v.7A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg>',
       pin: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M21 3 3 10.5v1l7 2.5 2.5 7h1L21 3Z"/></svg>',
       dev: '<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg>',
+      bolt: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>',
     };
     const pushState = (x) => PUSH_TEXT[x.push_perm] ?? (x.has_push ? ['unk', 'Notifications: unknown (older app), has a push token'] : ['no', 'No push token']);
     const locState = (x) => LOC_TEXT[x.location_perm] ?? ['unk', 'Location: unknown (older app)'];
     const permMarks = (x) => {
       const [pc, pt] = pushState(x), [lc, lt] = locState(x);
       // Developer mode: a third, solid mark, only while it is on (was a "dev" label at the row's end).
-      return `<span class="perm"><span class="pm ${pc}" title="${pt}">${ICON.bell}</span><span class="pm ${lc}" title="${lt}">${ICON.pin}</span>${x.dev_mode ? `<span class="pm devm" title="Developer mode on">${ICON.dev}</span>` : ''}</span>`;
+      return `<span class="perm"><span class="pm ${pc}" title="${pt}">${ICON.bell}</span><span class="pm ${lc}" title="${lt}">${ICON.pin}</span>${x.dev_mode ? `<span class="pm devm" title="Developer mode on">${ICON.dev}</span>` : ''}${x.auto_share ? `<span class="pm auto" title="Automatic sharing on">${ICON.bolt}</span>` : ''}</span>`;
     };
 
     async function openUser(id) {
@@ -396,7 +400,7 @@
           <div>Received</div><div><b>${u.received_real + u.received_adj}</b> = ${u.received_real} real ${u.received_adj >= 0 ? '+' : '−'} ${Math.abs(u.received_adj)} adjusted</div>
           <div>Fair use</div><div>received − given = <b>${u.balance}</b> (warn at 3, blocked at 5)</div>
           <div>Strikes (30 d)</div><div>${u.strikes_30d}</div>
-          <div>State</div><div class="flag">${[u.is_blocked && 'blocked', u.cooldown_until && new Date(u.cooldown_until) > Date.now() && `cooldown until ${time(u.cooldown_until)}`, u.flagged && 'flagged', u.dev_mode && 'developer mode'].filter(Boolean).join(' · ') || '<span style="color:var(--accent)">ok</span>'}</div>
+          <div>State</div><div class="flag">${[u.is_blocked && 'blocked', u.cooldown_until && new Date(u.cooldown_until) > Date.now() && `cooldown until ${time(u.cooldown_until)}`, u.flagged && 'flagged', u.dev_mode && 'developer mode', u.auto_share && 'automatic sharing'].filter(Boolean).join(' · ') || '<span style="color:var(--accent)">ok</span>'}</div>
         </div>
         <div class="actions">
           <button class="small ${u.is_blocked ? '' : 'danger'}" data-mod="${u.is_blocked ? 'unblock' : 'block'}">${u.is_blocked ? 'Unblock' : 'Block'}</button>
