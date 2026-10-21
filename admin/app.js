@@ -333,7 +333,7 @@
       if (error || seq !== userSeq) return;
       const device = (x) => (x.platform ? `${x.platform === 'ios' ? 'iPhone' : x.platform === 'android' ? 'Android' : 'Web'}${x.app_build ? ` · ${x.app_build}` : ''}` : '-') + permMarks(x);
       $('userList').innerHTML = table(['', 'Nickname', 'Device', 'Sign-in', 'Email', 'Chains', 'Gave', 'Got', 'Joined', 'Last seen', ''],
-        u.rows.map((x) => `<tr><td>${avatarImg(x)}</td><td>${userLink(x.id, x.nickname)}${x.name ? `<div class="dim small">${esc(x.name)}</div>` : ''}</td><td class="dim">${device(x)}</td><td class="dim">${esc(x.method)}</td><td class="dim">${esc(x.email ?? '')}</td><td>${esc(x.chains ?? '')}</td><td>${x.given}</td><td>${x.received}</td><td class="dim">${time(x.created_at)}</td><td class="dim">${ago(x.last_seen_at ?? x.last_sign_in_at)}</td><td class="flag">${x.dev_mode ? '<span class="dev" title="Developer mode on">dev</span> ' : ''}${[x.is_blocked && 'blocked', x.in_cooldown && 'cooldown', x.flagged && 'flagged'].filter(Boolean).join(' · ')}</td></tr>`));
+        u.rows.map((x) => `<tr><td>${avatarImg(x)}</td><td>${userLink(x.id, x.nickname)}${x.name ? `<div class="dim small">${esc(x.name)}</div>` : ''}</td><td class="dim">${device(x)}</td><td class="dim">${esc(x.method)}</td><td class="dim">${esc(x.email ?? '')}</td><td>${esc(x.chains ?? '')}</td><td>${x.given}</td><td>${x.received}</td><td class="dim">${time(x.created_at)}</td><td class="dim">${ago(x.last_seen_at ?? x.last_sign_in_at)}</td><td class="flag">${[x.is_blocked && 'blocked', x.in_cooldown && 'cooldown', x.flagged && 'flagged'].filter(Boolean).join(' · ')}</td></tr>`));
       pager('userPager', u.total, offset, loadUsers);
       fillSigned($('userList'), 'avatars', 'avatar');
     }
@@ -366,12 +366,14 @@
     const ICON = {
       bell: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.4-2h-4.8A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.8V3.5a1.5 1.5 0 0 0-3 0v.7A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg>',
       pin: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M21 3 3 10.5v1l7 2.5 2.5 7h1L21 3Z"/></svg>',
+      dev: '<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg>',
     };
     const pushState = (x) => PUSH_TEXT[x.push_perm] ?? (x.has_push ? ['unk', 'Notifications: unknown (older app), has a push token'] : ['no', 'No push token']);
     const locState = (x) => LOC_TEXT[x.location_perm] ?? ['unk', 'Location: unknown (older app)'];
     const permMarks = (x) => {
       const [pc, pt] = pushState(x), [lc, lt] = locState(x);
-      return `<span class="perm"><span class="pm ${pc}" title="${pt}">${ICON.bell}</span><span class="pm ${lc}" title="${lt}">${ICON.pin}</span></span>`;
+      // Developer mode: a third, solid mark, only while it is on (was a "dev" label at the row's end).
+      return `<span class="perm"><span class="pm ${pc}" title="${pt}">${ICON.bell}</span><span class="pm ${lc}" title="${lt}">${ICON.pin}</span>${x.dev_mode ? `<span class="pm devm" title="Developer mode on">${ICON.dev}</span>` : ''}</span>`;
     };
 
     async function openUser(id) {
