@@ -423,9 +423,13 @@
         ${table(['When', 'Reason', 'Resolved'], u.reports.map((r) => `<tr><td class="dim">${time(r.created_at)}</td><td class="wrap">${esc(r.reason)}</td><td class="dim">${r.resolved ? 'yes' : 'no'}</td></tr>`))}
         ${u.dev_mode ? `<h3>Truck stop passes <span class="dim">(developer mode)</span></h3>
           <p class="dim small">Tap a pass to see it on the map: <b style="color:#4fbf6a">●</b> the truck stop, <b style="color:#3d8bfd">●</b> where the phone was at its closest. The circle is the 1,000 ft zone.</p>
-          <div id="passMap" class="passMap"></div><div id="passList"><p class="dim">Loading…</p></div>` : ''}
+          <div id="passMap" class="passMap"></div><div id="passList"><p class="dim">Loading…</p></div>
+          <h3>Geofence events <span class="dim">(developer mode)</span></h3>
+          <p class="dim small">What the phone's geofences reported, newest first: <b style="color:var(--accent)">enter / exit</b> the stop's zone, <b style="color:#e8b04a">near / far</b> the wide zone, grey for zone refreshes, restarts and the phone's own background fixes. Tap a row to see it on the map.</p>
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;color:var(--dim);margin:0 0 8px"><input type="checkbox" id="geoFixes" style="width:auto;max-width:none"> Show background fixes</label>
+          <div id="geoMap" class="passMap"></div><div id="geoList"><p class="dim">Loading…</p></div>` : ''}
       </div>`;
-      if (u.dev_mode) loadPasses(u.id);
+      if (u.dev_mode) { loadPasses(u.id); loadGeofences(u.id); $('geoFixes').onchange = () => loadGeofences(u.id); }
       fillSigned($('drawer'), 'avatars', 'avatar');
       const close = () => { $('drawerHost').innerHTML = ''; };
       $('drawerBack').onclick = close; $('drawerClose').onclick = close;
@@ -539,6 +543,62 @@
           <td>${x.status === 'pending' ? `<button class="small" data-issue="${x.id}" data-approve="1">✅ Approve</button> <button class="small danger" data-issue="${x.id}" data-approve="0">❌ Reject</button>` : `<span class="dim">${x.decided_at ? time(x.decided_at) : ''}</span>`}</td></tr>`))
         : '<p class="dim">Nothing reported yet.</p>';
       loadOtherChains();
+    }
+    // ---- a developer-mode driver's geofence journal (migration 90), under the passes ----
+    let geoMap = null;
+    async function loadGeofences(userId) {
+      const fixes = $('geoFixes')?.checked ?? false;
+      const { data, error } = await sb.rpc('admin_geofence_events', { p_user: userId, p_fixes: fixes });
+      if (!$('geoList')) return;   // the card was closed meanwhile
+      if (error) return $('geoList').innerHTML = `<p class="msg">${esc(error.message)}</p>`;
+      const timeS = (t) => new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const dur = (sec) => sec < 90 ? `${Math.max(1, Math.round(sec))} s` : sec < 5400 ? `${Math.round(sec / 60)} min` : `${(sec / 3600).toFixed(1)} h`;
+      const color = (e) => e === 'enter' || e === 'exit' ? 'var(--accent)' : e === 'near' || e === 'far' ? '#e8b04a' : 'var(--dim)';
+      const facts = (e) => {
+        if (e.event === 'zones') return `${e.count ?? 0} stops registered`;
+        if (e.event === 'restart') return 'zones registered again after a restart';
+        if (e.event === 'fix') return `background fix${e.accuracy_m != null ? `, ±${e.accuracy_m} m` : ''}`;
+        const which = e.event === 'enter' || e.event === 'exit' ? 'zone' : 'wide zone';
+        return e.since_at ? `${which} · ${dur((Date.parse(e.at) - Date.parse(e.since_at)) / 1000)} inside` : which;
+      };
+      const where = (e) => [e.interstate && `${esc(e.interstate)}${e.exit ? ' exit ' + esc(e.exit) : ''}`, [e.city, e.state].filter(Boolean).map(esc).join(', ')].filter(Boolean).join(', ');
+      const onMap = (e) => e.stop_lat != null || e.lat != null;
+      $('geoList').innerHTML = data.length ? `<div class="found">${data.map((e, i) => `<div class="foundRow ${onMap(e) ? 'clickable' : ''}" data-geo="${i}">
+          <div class="foundInfo"><div class="dim small">${timeS(e.at)}</div>
+            <b style="color:${color(e.event)}">${esc(e.event)}</b>${e.chain ? ` <b>${esc(e.chain)}${e.number ? ' #' + esc(e.number) : ''}</b> <span class="dim small">${where(e)}</span>` : ''}
+            <div class="dim small">${facts(e)}${e.platform ? ` · ${esc(e.platform)}${e.app_build ? ' ' + e.app_build : ''}` : ''}</div></div>
+        </div>`).join('')}</div>`
+        : '<p class="dim">No geofence events yet.</p>';
+      const first = data.findIndex(onMap);
+      if (first < 0) { show('geoMap', false); return; }
+      show('geoMap', true);
+      if (!geoMap || !document.body.contains(geoMap.getContainer())) {
+        geoMap = L.map('geoMap', { scrollWheelZoom: false });
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(geoMap);
+      }
+      const layer = L.layerGroup().addTo(geoMap);
+      const showEvent = (i) => {
+        const e = data[i];
+        if (!onMap(e)) return;
+        layer.clearLayers();
+        const pts = [];
+        if (e.stop_lat != null) {
+          const stop = [e.stop_lat, e.stop_lng];
+          L.circle(stop, { radius: 300, color: '#4fbf6a', weight: 1, fillOpacity: 0.08 }).addTo(layer);
+          L.circleMarker(stop, { radius: 7, color: '#4fbf6a', fillColor: '#4fbf6a', fillOpacity: 1 }).addTo(layer).bindTooltip(e.chain || '');
+          pts.push(stop);
+        }
+        if (e.lat != null) {
+          const me = [e.lat, e.lng];
+          if (e.accuracy_m) L.circle(me, { radius: e.accuracy_m, color: '#3d8bfd', weight: 1, fillOpacity: 0.1 }).addTo(layer);
+          L.circleMarker(me, { radius: 7, color: '#3d8bfd', fillColor: '#3d8bfd', fillOpacity: 1 }).addTo(layer).bindTooltip(timeS(e.at));
+          pts.push(me);
+        }
+        if (pts.length > 1) geoMap.fitBounds(L.latLngBounds(pts).pad(0.6), { maxZoom: 17 }); else geoMap.setView(pts[0], 15);
+        for (const row of $('geoList').querySelectorAll('[data-geo]')) row.classList.toggle('picked', Number(row.dataset.geo) === i);
+      };
+      $('geoList').onclick = (ev) => { const row = ev.target.closest('[data-geo]'); if (row) showEvent(Number(row.dataset.geo)); };
+      setTimeout(() => { geoMap.invalidateSize(); showEvent(first); }, 50);
     }
     // ---- a developer-mode driver's journal of passes, in the user card ----
     async function loadPasses(userId) {
