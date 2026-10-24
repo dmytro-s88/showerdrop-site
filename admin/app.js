@@ -421,15 +421,11 @@
         ${table(['Status', 'Role', 'Stop', 'Other driver', 'When'], u.exchanges.map((x) => `<tr><td>${pill(x.status)}</td><td class="dim">${esc(x.role)}</td><td>${esc(x.stop)}</td><td>${userLink(x.other_id, x.other)}</td><td class="dim">${time(x.created_at)}</td></tr>`))}
         <h3>Reports they made</h3>
         ${table(['When', 'Reason', 'Resolved'], u.reports.map((r) => `<tr><td class="dim">${time(r.created_at)}</td><td class="wrap">${esc(r.reason)}</td><td class="dim">${r.resolved ? 'yes' : 'no'}</td></tr>`))}
-        ${u.dev_mode ? `<h3>Truck stop passes <span class="dim">(developer mode)</span></h3>
-          <p class="dim small">Tap a pass to see it on the map: <b style="color:#4fbf6a">●</b> the truck stop, <b style="color:#3d8bfd">●</b> where the phone was at its closest. The circle is the 1,000 ft zone.</p>
-          <div id="passMap" class="passMap"></div><div id="passList"><p class="dim">Loading…</p></div>
-          <h3>Geofence events <span class="dim">(developer mode)</span></h3>
-          <p class="dim small">What the phone's geofences reported, newest first: <b style="color:var(--accent)">enter / exit</b> the stop's zone, <b style="color:#e8b04a">near / far</b> the wide zone, grey for zone refreshes, restarts and the phone's own background fixes. Tap a row to see it on the map.</p>
-          <label style="display:flex;align-items:center;gap:6px;font-size:14px;color:var(--dim);margin:0 0 8px"><input type="checkbox" id="geoFixes" style="width:auto;max-width:none"> Show background fixes</label>
-          <div id="geoMap" class="passMap"></div><div id="geoList"><p class="dim">Loading…</p></div>` : ''}
+        ${u.dev_mode ? `<h3>Journal <span class="dim">(developer mode)</span></h3>
+          <p class="dim small">What the phone's geofences reported and the GPS passes, on a page of their own with the map.</p>
+          <div class="actions"><button class="small" data-journal="geofences">Geofence events</button><button class="small" data-journal="passes">Truck stop passes</button></div>` : ''}
       </div>`;
-      if (u.dev_mode) { loadPasses(u.id); loadGeofences(u.id); $('geoFixes').onchange = () => loadGeofences(u.id); }
+      for (const b of $('drawer').querySelectorAll('[data-journal]')) b.onclick = () => openJournal(u, b.dataset.journal);
       fillSigned($('drawer'), 'avatars', 'avatar');
       const close = () => { $('drawerHost').innerHTML = ''; };
       $('drawerBack').onclick = close; $('drawerClose').onclick = close;
@@ -544,8 +540,45 @@
         : '<p class="dim">Nothing reported yet.</p>';
       loadOtherChains();
     }
-    // ---- a developer-mode driver's geofence journal (migration 90), under the passes ----
-    let geoMap = null;
+    // ---- a developer-mode driver's journal on the whole page: geofence events or GPS passes, map beside the list ----
+    function openJournal(u, tab) {
+      const host = document.createElement('div');
+      host.className = 'journal';
+      document.body.appendChild(host);
+      const close = () => { host.remove(); document.removeEventListener('keydown', onKey); };
+      const onKey = (e) => { if (e.key === 'Escape') close(); };
+      document.addEventListener('keydown', onKey);
+      const render = () => {
+        const geo = tab === 'geofences';
+        host.innerHTML = `<div class="journalHead">
+            <h2>${avatarImg(u, 'ava')}${esc(u.nickname)}</h2>
+            <div class="seg"><button class="small" data-tab="geofences" aria-pressed="${geo}">Geofences</button><button class="small" data-tab="passes" aria-pressed="${!geo}">Passes (GPS)</button></div>
+            ${geo ? '<label><input type="checkbox" id="geoFixes"> Background fixes</label>' : ''}
+            <button class="small" data-act="reload">Reload</button><button class="small" data-act="close">Close</button>
+          </div>
+          <div class="journalBody">
+            <div id="${geo ? 'geoMap' : 'passMap'}" class="passMap"></div>
+            <div class="journalList">
+              <p class="dim small">${geo ? `Newest first: <b style="color:var(--accent)">enter / exit</b> the stop's zone, <b style="color:#e8b04a">near / far</b> the wide zone, grey for zone refreshes, restarts and background fixes. Tap a row for the map.`
+                : `Tap a pass for the map: <b style="color:#4fbf6a">●</b> the truck stop, <b style="color:#3d8bfd">●</b> where the phone was at its closest; the circle is the 1,000 ft zone.`}</p>
+              <div id="${geo ? 'geoList' : 'passList'}"><p class="dim">Loading…</p></div>
+            </div>
+          </div>`;
+        fillSigned(host, 'avatars', 'avatar');
+        if (geo) { loadGeofences(u.id); $('geoFixes').onchange = () => loadGeofences(u.id); } else loadPasses(u.id);
+      };
+      host.onclick = (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        if (b.dataset.tab && b.dataset.tab !== tab) { tab = b.dataset.tab; render(); }
+        else if (b.dataset.act === 'reload') render();
+        else if (b.dataset.act === 'close') close();
+      };
+      render();
+    }
+
+    // ---- a developer-mode driver's geofence journal (migration 90) ----
+    let geoMap = null, geoLayer = null;
     async function loadGeofences(userId) {
       const fixes = $('geoFixes')?.checked ?? false;
       const { data, error } = await sb.rpc('admin_geofence_events', { p_user: userId, p_fixes: fixes });
@@ -576,7 +609,8 @@
         geoMap = L.map('geoMap', { scrollWheelZoom: false });
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(geoMap);
       }
-      const layer = L.layerGroup().addTo(geoMap);
+      geoLayer?.remove();   // a reload on the same map (the fixes switch) starts clean
+      const layer = geoLayer = L.layerGroup().addTo(geoMap);
       const showEvent = (i) => {
         const e = data[i];
         if (!onMap(e)) return;
@@ -600,7 +634,7 @@
       $('geoList').onclick = (ev) => { const row = ev.target.closest('[data-geo]'); if (row) showEvent(Number(row.dataset.geo)); };
       setTimeout(() => { geoMap.invalidateSize(); showEvent(first); }, 50);
     }
-    // ---- a developer-mode driver's journal of passes, in the user card ----
+    // ---- a developer-mode driver's journal of passes ----
     async function loadPasses(userId) {
       const { data, error } = await sb.rpc('admin_stop_passes', { p_user: userId });
       if (!$('passList')) return;   // the card was closed meanwhile
