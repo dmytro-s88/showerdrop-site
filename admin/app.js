@@ -553,13 +553,13 @@
         host.innerHTML = `<div class="journalHead">
             <h2>${avatarImg(u, 'ava')}${esc(u.nickname)}</h2>
             <div class="seg"><button class="small" data-tab="geofences" aria-pressed="${geo}">Geofences</button><button class="small" data-tab="passes" aria-pressed="${!geo}">Passes (GPS)</button></div>
-            ${geo ? '<label><input type="checkbox" id="geoFixes"> Background fixes</label>' : ''}
+            ${geo ? '<label><input type="checkbox" id="geoFixes"> Zone refreshes and fixes</label>' : ''}
             <button class="small" data-act="reload">Reload</button><button class="small" data-act="close">Close</button>
           </div>
           <div class="journalBody">
             <div id="${geo ? 'geoMap' : 'passMap'}" class="passMap"></div>
             <div class="journalList">
-              <p class="dim small">${geo ? `Newest first: <b style="color:var(--accent)">enter / exit</b> the stop's zone, <b style="color:#e8b04a">near / far</b> the wide zone, grey for zone refreshes, restarts and background fixes. Tap a row for the map.`
+              <p class="dim small">${geo ? `Newest first: <b style="color:var(--accent)">enter / exit</b> the stop's zone, <b style="color:#e8b04a">near / far</b> the wide zone, grey for restarts (zone refreshes and background fixes behind the switch above). Tap a row for the map.`
                 : `Tap a pass for the map: <b style="color:#4fbf6a">●</b> the truck stop, <b style="color:#3d8bfd">●</b> where the phone was at its closest; the circle is the 1,000 ft zone.`}</p>
               <div id="${geo ? 'geoList' : 'passList'}"><p class="dim">Loading…</p></div>
             </div>
@@ -578,12 +578,16 @@
     }
 
     // ---- a developer-mode driver's geofence journal (migration 90) ----
+    // Switch off: no background fixes and no zone refreshes (a phone re-registers its 20 / 60 stops every few
+    // minutes, ~100 rows a day that buried the dozen enters and exits), so a deeper page is fetched and those dropped.
     let geoMap = null, geoLayer = null;
     async function loadGeofences(userId) {
       const fixes = $('geoFixes')?.checked ?? false;
-      const { data, error } = await sb.rpc('admin_geofence_events', { p_user: userId, p_fixes: fixes });
+      const res = await sb.rpc('admin_geofence_events', { p_user: userId, p_fixes: fixes, p_limit: fixes ? 300 : 2000 });
+      const { error } = res;
       if (!$('geoList')) return;   // the card was closed meanwhile
       if (error) return $('geoList').innerHTML = `<p class="msg">${esc(error.message)}</p>`;
+      const data = fixes ? res.data : res.data.filter((e) => e.event !== 'zones').slice(0, 300);
       const timeS = (t) => new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
       const dur = (sec) => sec < 90 ? `${Math.max(1, Math.round(sec))} s` : sec < 5400 ? `${Math.round(sec / 60)} min` : `${(sec / 3600).toFixed(1)} h`;
       const color = (e) => e === 'enter' || e === 'exit' ? 'var(--accent)' : e === 'near' || e === 'far' ? '#e8b04a' : 'var(--dim)';
