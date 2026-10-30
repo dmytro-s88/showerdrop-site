@@ -176,11 +176,12 @@
       for (const a of $('tabs').querySelectorAll('a')) if (a.getAttribute('href') === `#${tab}`) a.setAttribute('aria-current', 'page');
       loaders[tab]();
       if (tab === 'stops') { setTimeout(() => map?.invalidateSize(), 50); loadAddChains(); }
+      if (tab === 'dashboard') setTimeout(() => driverMap?.invalidateSize(), 50);
     }
     window.addEventListener('hashchange', () => { $('drawerHost').innerHTML = ''; if (!$('dash').hidden) showTab(); });
 
     // ---- dashboard ----------------------------------------------------------
-    async function loadDashboard() { await Promise.all([loadOverview(), loadLive(), loadServer()]); }
+    async function loadDashboard() { await Promise.all([loadOverview(), loadLive(), loadServer(), loadDrivers()]); }
 
     // Server load: the worker measures once a minute (see migration 76). Level and numbers now, then the last
     // 24 hours in 5-minute steps, one small chart per measure, a dashed line where "busy" starts.
@@ -326,6 +327,104 @@
       $('closedList').innerHTML = table(['Status', 'Stop', 'Receiver', 'Donor', 'Closed', 'Reason'],
         l.recent_exchanges.map((x) => `<tr><td>${pill(x.status)}</td><td>${esc(x.stop)}</td><td>${esc(x.receiver)}</td><td>${esc(x.donor)}</td><td class="dim">${ago(x.updated_at)}</td><td class="dim">${esc(x.decline_reason ?? '')}</td></tr>`));
     }
+
+    // ---- driver map: each driver at the stop of his last check-in (migration 103) ----
+    // One marker per stop, faces side by side. Markers are kept by stop and updated in place, so a refresh
+    // (realtime or the 30-second timer) doesn't close an open card or move the map.
+    let driverMap, driverMarks = new Map(), driverRows = [], driverFitted = false;
+    const D_RANK = { sharing: 0, starting: 1, requesting: 2, last: 3 };
+    const clock = (t) => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const span = (t) => {
+      const m = Math.max(0, Math.round((Date.now() - new Date(t)) / 60000));
+      return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`;
+    };
+    // Grey faces fade with the last check-in's age: today, this week, older.
+    const ageCls = (d) => {
+      if (d.status !== 'last') return '';
+      const h = (Date.now() - new Date(d.ended_at ?? d.checked_in_at)) / 3600000;
+      return h < 12 ? '' : h < 48 ? ' age1' : h < 24 * 7 ? ' age2' : ' age3';
+    };
+    const face = (d) => `<span class="face s-${d.status}${ageCls(d)}">${avatarImg(d, '')}</span>`;
+    const stopName = (s) => `${s.chain}${s.number ? ` #${s.number}` : ''}`;
+    const stopWhere = (s) => [[s.city, s.state].filter(Boolean).join(', '), s.interstate && `${s.interstate}${s.exit ? ` exit ${s.exit}` : ''}`].filter(Boolean).join(' · ');
+    const dState = (d) => ({
+      sharing: `Sharing since ${clock(d.active_from ?? d.checked_in_at)} · ${span(d.active_from ?? d.checked_in_at)}`,
+      starting: `Pulled in ${clock(d.checked_in_at)} · sharing starts in ${Math.max(1, Math.ceil((new Date(d.active_from) - Date.now()) / 60000))} min`,
+      requesting: `Waiting for a shower · asked ${ago(d.requested_at)}${d.request_status && d.request_status !== 'searching' ? ` (${label[d.request_status] ?? d.request_status})` : ''}`,
+      last: `Checked in ${time(d.checked_in_at)}${d.ended_at ? ` · ended ${ago(d.ended_at)}` : ''}`,
+    })[d.status];
+    const dShort = (d) => d.status === 'sharing' ? span(d.active_from ?? d.checked_in_at)
+      : d.status === 'starting' ? 'starting' : d.status === 'requesting' ? ago(d.requested_at) : ago(d.ended_at ?? d.checked_in_at);
+    const driverDevice = (d) => [d.platform && (d.platform === 'ios' ? 'iPhone' : d.platform === 'android' ? 'Android' : 'Web'), d.app_build && `build ${d.app_build}`,
+      d.auto != null && (d.auto ? 'automatic' : 'manual'), d.last_seen_at && `seen ${ago(d.last_seen_at)}`].filter(Boolean).join(' · ');
+
+    async function loadDrivers() {
+      const { data, error } = await sb.rpc('admin_driver_map');
+      if (error) return;
+      driverRows = data;
+      if (!driverMap) {
+        driverMap = L.map('driverMap', { scrollWheelZoom: false, zoomControl: true }).setView([39.5, -96], 4);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(driverMap);
+        $('driverAll').onclick = () => fitDrivers();
+      }
+      const byStop = new Map();
+      for (const d of data) (byStop.get(d.stop.id) ?? byStop.set(d.stop.id, []).get(d.stop.id)).push(d);
+      for (const [id, m] of driverMarks) if (!byStop.has(id)) { m.remove(); driverMarks.delete(id); }
+      for (const [id, ds] of byStop) {
+        ds.sort((a, b) => D_RANK[a.status] - D_RANK[b.status]);
+        const s = ds[0].stop, top = ds[0].status, shown = ds.slice(0, 3);
+        const html = `<div class="dMark"><div class="faces">${shown.map(face).join('')}${ds.length > 3 ? `<em>+${ds.length - 3}</em>` : ''}</div>`
+          + `${top !== 'last' ? `<span class="tag s-${top}">${esc(stopName(s))}</span>` : ''}</div>`;
+        const card = `<div class="dCard"><h4>${esc(stopName(s))}</h4><div class="dWhere">${esc(stopWhere(s))}</div>${ds.map((d) => `
+          <div class="dOne">${face(d)}<div>${userLink(d.id, d.nickname)}<div class="dSt s-${d.status}">${dState(d)}</div>
+            <div class="dDev">${esc(driverDevice(d))}</div><button class="small" data-djournal="${esc(d.id)}">Journal</button></div></div>`).join('')}</div>`;
+        let m = driverMarks.get(id);
+        if (!m) {
+          m = L.marker([s.lat, s.lng], { riseOnHover: true }).bindPopup('', { maxWidth: 320 }).addTo(driverMap);
+          m.on('popupopen', (e) => fillSigned(e.popup.getElement(), 'avatars', 'avatar'));
+          driverMarks.set(id, m);
+        }
+        // Width: faces overlap by 12 px; the stop's tag can be wider than them.
+        const w = Math.max(38 + (shown.length - 1) * 26 + (ds.length > 3 ? 34 : 0), top !== 'last' ? 110 : 0);
+        if (m._dHtml !== html) {
+          m.setIcon(L.divIcon({ className: '', html, iconSize: [w, top !== 'last' ? 58 : 38], iconAnchor: [w / 2, 19], popupAnchor: [0, -18] }));
+          m._dHtml = html;
+        }
+        m.setZIndexOffset((3 - D_RANK[top]) * 1000);
+        m.setPopupContent(card);
+        if (m.isPopupOpen()) fillSigned(m.getPopup().getElement(), 'avatars', 'avatar');
+      }
+      fillSigned($('driverMap'), 'avatars', 'avatar');
+
+      const now = data.filter((d) => d.status === 'sharing').length;
+      $('driverCount').textContent = data.length ? `${now ? `${now} sharing · ` : ''}${data.length} on the map` : '';
+      const group = (title, rows) => rows.length ? `<h3>${title}<b>${rows.length}</b></h3>${rows.map((d) => `
+        <button class="dRow s-${d.status}" data-dstop="${d.stop.id}">${face(d)}<span class="who"><b>${esc(d.nickname)}</b><span>${esc(stopName(d.stop))} · ${esc(stopWhere(d.stop))}</span></span><span class="when">${dShort(d)}</span></button>`).join('')}` : '';
+      $('driverList').innerHTML = data.length
+        ? group('Sharing now', data.filter((d) => d.status === 'sharing')) + group('Starting', data.filter((d) => d.status === 'starting'))
+          + group('Waiting for a shower', data.filter((d) => d.status === 'requesting')) + group('Earlier', data.filter((d) => d.status === 'last'))
+        : '<div class="empty">Nobody has checked in yet.</div>';
+      fillSigned($('driverList'), 'avatars', 'avatar');
+      if (!driverFitted && data.length) { fitDrivers(); driverFitted = true; }
+    }
+    // Everyone in view, but no closer than a region: one stop alone shouldn't fill the map with its parking lot.
+    function fitDrivers() {
+      if (!driverRows.length) return driverMap.setView([39.5, -96], 4);
+      driverMap.fitBounds(L.latLngBounds(driverRows.map((d) => [d.stop.lat, d.stop.lng])), { padding: [60, 60], maxZoom: 8 });
+    }
+    $('driverList').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-dstop]');
+      if (!b) return;
+      const m = driverMarks.get(Number(b.dataset.dstop));
+      if (!m) return;
+      driverMap.flyTo(m.getLatLng(), Math.max(driverMap.getZoom(), 11), { duration: 0.8 });
+      driverMap.once('moveend', () => m.openPopup());
+    });
+    $('driverMap').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-djournal]');
+      const d = b && driverRows.find((x) => x.id === b.dataset.djournal);
+      if (d) openJournal(d, 'geofences');
+    });
 
     // ---- users --------------------------------------------------------------
     let userOffset = 0, userSeq = 0;

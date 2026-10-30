@@ -141,6 +141,70 @@
     .spark .tip { position: absolute; top: -8px; transform: translate(-50%, -100%); background: var(--steel); color: var(--ink);
                   border-radius: 8px; padding: 5px 9px; font-size: 13px; white-space: nowrap; pointer-events: none; z-index: 2; }
     .server .note { color: var(--dim); font-size: 14px; margin: 12px 0 0; }
+    /* Driver map: each driver at the stop of his last check-in (never his GPS). A dark, colorless map so the
+       status rings carry the color: green sharing (a slow pulse), amber starting, blue waiting for a shower, grey
+       the last check-in, paler the older it is. Drivers at one stop share one marker, avatars side by side. */
+    .drivers h2 .spacer { flex: 1; }
+    .drivers h2 button { font-size: 13px; }
+    .driverBox { display: grid; grid-template-columns: minmax(0, 1fr) 290px; height: 440px; border-radius: 14px; overflow: hidden;
+                 box-shadow: 0 0 0 1px #2c3638; background: #0b1011; }
+    #driverMap { height: 100%; background: #0b1011; position: relative; z-index: 0; }
+    #driverMap .leaflet-tile-pane { filter: grayscale(1) invert(1) brightness(.62) contrast(1.15); }
+    #driverMap .leaflet-control-attribution { background: rgba(11, 16, 17, .75); color: #6b7779; }
+    #driverMap .leaflet-control-attribution a { color: #8a9698; }
+    #driverMap .leaflet-bar a { background: #1b2326; color: var(--text); border-color: #2c3638; }
+    .driverList { overflow-y: auto; border-left: 1px solid #2c3638; padding: 6px 0; }
+    .driverList h3 { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 10px 14px 4px; }
+    .driverList h3 b { color: var(--text); font-weight: 500; margin-left: 4px; }
+    .dRow { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 14px; border: 0; border-radius: 0; background: none;
+            color: var(--text); text-align: left; font-size: 14px; white-space: normal; }
+    .dRow:hover, .dRow:focus-visible { background: rgba(201, 206, 209, .06); }
+    .dRow .who { min-width: 0; flex: 1; line-height: 1.3; }
+    .dRow .who b { font-weight: 500; }
+    .dRow .who span { display: block; color: var(--dim); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dRow .when { color: var(--dim); font-size: 12px; white-space: nowrap; align-self: flex-start; padding-top: 2px; }
+    .dRow.s-sharing .when { color: #6fe08a; }
+    .driverList .empty { margin: 10px 14px; background: none; padding: 0; font-size: 14px; }
+    /* A face with a status ring. */
+    .face { position: relative; flex: none; width: 34px; height: 34px; border-radius: 50%; padding: 2px; background: #4a5658; }
+    .face img { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #0b1011; background: var(--surface2); }
+    .face.s-sharing { background: var(--accent); }
+    .face.s-starting { background: var(--amber); }
+    .face.s-requesting { background: #3d8bfd; }
+    .dMark .face.s-sharing::after { content: ""; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid var(--accent); animation: dPulse 2.4s ease-out infinite; }
+    @keyframes dPulse { from { transform: scale(1); opacity: .9; } to { transform: scale(1.75); opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .dMark .face.s-sharing::after { animation: none; opacity: .35; transform: scale(1.25); } }
+    .face.age1 { opacity: .8; } .face.age2 { opacity: .55; } .face.age3 { opacity: .38; }
+    /* The marker: faces overlapping a little, the stop's name under it while someone is there now. */
+    .dMark { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .dMark .faces { display: flex; }
+    .dMark .faces .face { width: 38px; height: 38px; box-shadow: 0 4px 14px -4px rgba(0, 0, 0, .8); }
+    .dMark .faces .face + .face { margin-left: -12px; }
+    .dMark .faces em { align-self: center; margin-left: 4px; font-style: normal; font-size: 12px; font-weight: 700; color: var(--text);
+                       background: #1b2326; border-radius: 9px; padding: 1px 6px; box-shadow: 0 0 0 1px #2c3638; }
+    .dMark .tag { font-size: 11px; font-weight: 700; color: #0b1011; background: var(--accent); border-radius: 5px; padding: 1px 6px; white-space: nowrap; }
+    .dMark .tag.s-starting { background: var(--amber); } .dMark .tag.s-requesting { background: #3d8bfd; color: #fff; }
+    /* The stop's card on the map. */
+    #driverMap .leaflet-popup-content-wrapper { background: #1b2326; color: var(--text); border-radius: 12px; box-shadow: 0 0 0 1px #2c3638, 0 12px 30px -10px rgba(0, 0, 0, .8); }
+    #driverMap .leaflet-popup-tip { background: #1b2326; }
+    #driverMap .leaflet-popup-content { margin: 12px 14px; font: 14px/1.4 "IBM Plex Sans", sans-serif; min-width: 230px; }
+    #driverMap a.leaflet-popup-close-button { color: var(--dim); }
+    .dCard h4 { margin: 0; font-size: 15px; padding-right: 14px; }
+    .dCard .dWhere { color: var(--dim); font-size: 13px; margin-bottom: 4px; }
+    .dCard .dOne { display: flex; gap: 10px; padding: 8px 0 2px; border-top: 1px solid #2c3638; margin-top: 6px; }
+    .dCard .dOne > div { min-width: 0; }
+    .dCard .dSt { font-size: 13px; }
+    .dCard .dSt.s-sharing { color: #6fe08a; } .dCard .dSt.s-starting { color: var(--amber); } .dCard .dSt.s-requesting { color: #7fb2ff; }
+    .dCard .dDev { color: var(--dim); font-size: 12px; }
+    .dCard button { margin-top: 5px; font-size: 12px; padding: 3px 8px; }
+    .driverKey { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 13px; color: var(--dim); margin-top: 10px; }
+    .driverKey span { display: inline-flex; align-items: center; gap: 7px; }
+    .driverKey i { width: 10px; height: 10px; border-radius: 50%; background: #4a5658; }
+    .driverKey i.s-sharing { background: var(--accent); } .driverKey i.s-starting { background: var(--amber); } .driverKey i.s-requesting { background: #3d8bfd; }
+    @media (max-width: 760px) {
+      .driverBox { grid-template-columns: minmax(0, 1fr); grid-template-rows: 320px auto; height: auto; }
+      .driverList { border-left: 0; border-top: 1px solid #2c3638; max-height: 340px; }
+    }
     .liveLists { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 28px; }
     @media (max-width: 1000px) {
       .dash { grid-template-columns: minmax(0, 1fr); grid-template-areas: "now" "needs" "chart" "facts" "server"; }
@@ -371,6 +435,17 @@
           <div class="facts" id="facts"></div>
           <div class="server" id="server"></div>
         </div>
+        <section class="drivers">
+          <h2>Drivers <em id="driverCount"></em><span class="spacer"></span><button class="small" id="driverAll">Show all</button></h2>
+          <div class="driverBox">
+            <div id="driverMap"></div>
+            <div class="driverList" id="driverList"></div>
+          </div>
+          <div class="driverKey">
+            <span><i class="s-sharing"></i>Sharing now</span><span><i class="s-starting"></i>Pulled in, starts in 3 min</span>
+            <span><i class="s-requesting"></i>Waiting for a shower</span><span><i class="s-last"></i>Last check-in (fades with time)</span>
+          </div>
+        </section>
         <div class="liveLists">
           <section><h2>Open exchanges <em id="openCount"></em></h2><div id="openList"></div></section>
           <section><h2>Donors on shift <em id="shiftCount"></em></h2><div id="shiftList"></div></section>
@@ -530,6 +605,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous"></script>
-  <script src="app.js?v=20261027a"></script>
+  <script src="app.js?v=20261030a"></script>
 </body>
 </html>
