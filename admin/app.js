@@ -507,6 +507,8 @@
           <button class="small" data-mod="${u.flagged ? 'unflag' : 'flag'}">${u.flagged ? 'Unflag' : 'Flag'}</button>
           <button class="small" data-mod="${u.dev_mode ? 'dev_off' : 'dev_on'}" title="Developer mode: 5 taps on the version line in the app open a screen that logs every truck stop passed (background location)">Developer mode: ${u.dev_mode ? 'on' : 'off'}</button>
         </div>
+        ${u.strikes.length ? `<h3>Strikes</h3>
+          ${table(['When', 'Reason', 'Counts toward 24 h', ''], u.strikes.map((k) => `<tr><td class="dim">${time(k.created_at)}</td><td>${esc(k.reason)}</td><td class="dim">${k.counts ? 'yes' : 'no'}</td><td><button class="small" data-void="${k.id}">Void</button></td></tr>`))}` : ''}
         <h3>Adjust counters</h3>
         <form class="adjust" id="adjustForm">
           <input id="adjGiven" type="number" min="-100" max="100" placeholder="given ±, e.g. 1">
@@ -528,6 +530,11 @@
       fillSigned($('drawer'), 'avatars', 'avatar');
       const close = () => { $('drawerHost').innerHTML = ''; };
       $('drawerBack').onclick = close; $('drawerClose').onclick = close;
+      for (const b of $('drawer').querySelectorAll('[data-void]')) b.onclick = async () => {
+        const { data, error } = await sb.rpc('admin_void_strike', { p_strike_id: Number(b.dataset.void) });
+        if (error) return $('userMsg').textContent = errText(error);
+        renderUser(data); loadUsers();
+      };
       for (const b of $('drawer').querySelectorAll('[data-mod]')) b.onclick = async () => {
         let reason = null;
         if (b.dataset.mod === 'block') {
