@@ -1032,6 +1032,7 @@
     const adminErrors = {
       bad_email: "That doesn't look like an email address.",
       already_admin: 'This email is already an admin.',
+      no_account: 'No account with this email yet. They need to sign in once, then add them.',
       cannot_remove_self: "You can't remove yourself. Ask another admin.",
       owner_admin: "This is the owner's email; it can't be removed.",
       last_admin: "You can't remove the last admin.",
@@ -1039,9 +1040,8 @@
     };
     const adminErr = (e) => adminErrors[e.message] ?? e.message;
     function renderAdmins(a) {
-      $('adminList').innerHTML = table(['Email', 'Account', 'Last sign-in', ''],
+      $('adminList').innerHTML = table(['Email', 'Last sign-in', ''],
         a.admins.map((x) => `<tr><td>${esc(x.email)}${x.email === a.me ? '<span class="you">you</span>' : ''}</td>
-          <td class="dim">${x.has_account ? 'yes' : 'not yet'}</td>
           <td class="dim">${x.last_sign_in_at ? ago(x.last_sign_in_at) : '-'}</td>
           <td>${x.email === a.me || x.email === a.owner ? '' : `<button class="small" data-remove="${esc(x.email)}">Remove</button>`}</td></tr>`));
     }
