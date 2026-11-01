@@ -1133,7 +1133,6 @@
       const nudge = () => { clearTimeout(reloadTimer); reloadTimer = setTimeout(() => { if (!$('view-dashboard').hidden) loadDashboard(); }, 800); };
       channel = sb.channel('admin')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'exchanges' }, nudge)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'presence' }, nudge)
         .subscribe((status) => {
           $('live').classList.toggle('on', status === 'SUBSCRIBED');
           $('liveText').textContent = status === 'SUBSCRIBED' ? 'live' : 'reconnecting…';
